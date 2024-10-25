@@ -1,5 +1,5 @@
 require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
-/******/ 	var __webpack_modules__ = ({
+/******/    var __webpack_modules__ = ({
 
 /***/ 2985:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
@@ -1222,28 +1222,16 @@ function run() {
                 showCodeCoverage
             });
             if (core.getInput('token')) {
-                yield core.summary.addRaw(report.reportSummary).write();
+                const byteLengthLimit = 65535;
+                let reportTitle = trimToByteLength('summary', core.getInput('title'), byteLengthLimit);
+                let reportSummary = trimToByteLength('summary', report.reportSummary, byteLengthLimit);
+                let reportDetail = trimToByteLength('text', report.reportDetail, byteLengthLimit);
+                yield core.summary.addRaw(reportSummary).write();
                 const octokit = new action_1.Octokit();
                 const owner = github.context.repo.owner;
                 const repo = github.context.repo.repo;
                 const pr = github.context.payload.pull_request;
                 const sha = (pr && pr.head.sha) || github.context.sha;
-                const charactersLimit = 65535;
-                let title = core.getInput('title');
-                if (title.length > charactersLimit) {
-                    core.warning(`The 'title' will be truncated because the character limit (${charactersLimit}) exceeded.`);
-                    title = title.substring(0, charactersLimit);
-                }
-                let reportSummary = report.reportSummary;
-                if (reportSummary.length > charactersLimit) {
-                    core.warning(`The 'summary' will be truncated because the character limit (${charactersLimit}) exceeded.`);
-                    reportSummary = reportSummary.substring(0, charactersLimit);
-                }
-                let reportDetail = report.reportDetail;
-                if (reportDetail.length > charactersLimit) {
-                    core.warning(`The 'text' will be truncated because the character limit (${charactersLimit}) exceeded.`);
-                    reportDetail = reportDetail.substring(0, charactersLimit);
-                }
                 if (report.annotations.length > 50) {
                     core.warning('Annotations that exceed the limit (50) will be truncated.');
                 }
@@ -1267,7 +1255,7 @@ function run() {
                 yield octokit.checks.create({
                     owner,
                     repo,
-                    name: title,
+                    name: reportTitle,
                     head_sha: sha,
                     status: 'completed',
                     conclusion: report.testStatus,
@@ -1316,6 +1304,20 @@ function mergeResultBundle(inputPaths, outputPath) {
         };
         yield exec.exec('xcrun', args, options);
     });
+}
+function trimToByteLength(name, str, byteLength) {
+    const buf = Buffer.from(str, 'utf8');
+    if (buf.length <= byteLength) {
+        return str;
+    }
+    let trimmed = str.slice(0, byteLength);
+    while (Buffer.byteLength(trimmed, 'utf8') > byteLength) {
+        trimmed = trimmed.slice(0, -1);
+    }
+    if (trimmed.length < str.length) {
+        core.warning(`The '${name}' will be truncated because it exceeded the maximum length ${byteLength}.`);
+    }
+    return trimmed;
 }
 
 
@@ -1404,7 +1406,7 @@ class Parser {
     }
     exportObject(reference, outputPath) {
         return __awaiter(this, void 0, void 0, function* () {
-            const args = [
+            let args = [
                 'xcresulttool',
                 'export',
                 '--type',
@@ -1416,6 +1418,9 @@ class Parser {
                 '--id',
                 reference
             ];
+            if (yield this.requiresLegacyFlag()) {
+                args.splice(2, 0, "--legacy");
+            }
             const options = {
                 silent: true
             };
@@ -1439,9 +1444,25 @@ class Parser {
             return output;
         });
     }
+    requiresLegacyFlag() {
+        return __awaiter(this, void 0, void 0, function* () {
+            let output = '';
+            const options = {
+                silent: true,
+                listeners: {
+                    stdout: (data) => {
+                        output += data.toString();
+                    }
+                }
+            };
+            yield exec.exec('xcrun', ['xcresulttool', 'version'], options);
+            const version = parseFloat(output.split(/[ ,]+/)[2]);
+            return version > 23000;
+        });
+    }
     toJSON(reference) {
         return __awaiter(this, void 0, void 0, function* () {
-            const args = [
+            let args = [
                 'xcresulttool',
                 'get',
                 '--path',
@@ -1449,6 +1470,9 @@ class Parser {
                 '--format',
                 'json'
             ];
+            if (yield this.requiresLegacyFlag()) {
+                args.splice(2, 0, "--legacy");
+            }
             if (reference) {
                 args.push('--id');
                 args.push(reference);
@@ -4698,7 +4722,7 @@ class OidcClient {
                 .catch(error => {
                 throw new Error(`Failed to get ID Token. \n 
         Error Code : ${error.statusCode}\n 
-        Error Message: ${error.result.message}`);
+        Error Message: ${error.message}`);
             });
             const id_token = (_a = res.result) === null || _a === void 0 ? void 0 : _a.value;
             if (!id_token) {
@@ -13989,14 +14013,14 @@ exports.load = load;
 exports.useColors = useColors;
 exports.storage = localstorage();
 exports.destroy = (() => {
-	let warned = false;
+    let warned = false;
 
-	return () => {
-		if (!warned) {
-			warned = true;
-			console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
-		}
-	};
+    return () => {
+        if (!warned) {
+            warned = true;
+            console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+        }
+    };
 })();
 
 /**
@@ -14004,82 +14028,82 @@ exports.destroy = (() => {
  */
 
 exports.colors = [
-	'#0000CC',
-	'#0000FF',
-	'#0033CC',
-	'#0033FF',
-	'#0066CC',
-	'#0066FF',
-	'#0099CC',
-	'#0099FF',
-	'#00CC00',
-	'#00CC33',
-	'#00CC66',
-	'#00CC99',
-	'#00CCCC',
-	'#00CCFF',
-	'#3300CC',
-	'#3300FF',
-	'#3333CC',
-	'#3333FF',
-	'#3366CC',
-	'#3366FF',
-	'#3399CC',
-	'#3399FF',
-	'#33CC00',
-	'#33CC33',
-	'#33CC66',
-	'#33CC99',
-	'#33CCCC',
-	'#33CCFF',
-	'#6600CC',
-	'#6600FF',
-	'#6633CC',
-	'#6633FF',
-	'#66CC00',
-	'#66CC33',
-	'#9900CC',
-	'#9900FF',
-	'#9933CC',
-	'#9933FF',
-	'#99CC00',
-	'#99CC33',
-	'#CC0000',
-	'#CC0033',
-	'#CC0066',
-	'#CC0099',
-	'#CC00CC',
-	'#CC00FF',
-	'#CC3300',
-	'#CC3333',
-	'#CC3366',
-	'#CC3399',
-	'#CC33CC',
-	'#CC33FF',
-	'#CC6600',
-	'#CC6633',
-	'#CC9900',
-	'#CC9933',
-	'#CCCC00',
-	'#CCCC33',
-	'#FF0000',
-	'#FF0033',
-	'#FF0066',
-	'#FF0099',
-	'#FF00CC',
-	'#FF00FF',
-	'#FF3300',
-	'#FF3333',
-	'#FF3366',
-	'#FF3399',
-	'#FF33CC',
-	'#FF33FF',
-	'#FF6600',
-	'#FF6633',
-	'#FF9900',
-	'#FF9933',
-	'#FFCC00',
-	'#FFCC33'
+    '#0000CC',
+    '#0000FF',
+    '#0033CC',
+    '#0033FF',
+    '#0066CC',
+    '#0066FF',
+    '#0099CC',
+    '#0099FF',
+    '#00CC00',
+    '#00CC33',
+    '#00CC66',
+    '#00CC99',
+    '#00CCCC',
+    '#00CCFF',
+    '#3300CC',
+    '#3300FF',
+    '#3333CC',
+    '#3333FF',
+    '#3366CC',
+    '#3366FF',
+    '#3399CC',
+    '#3399FF',
+    '#33CC00',
+    '#33CC33',
+    '#33CC66',
+    '#33CC99',
+    '#33CCCC',
+    '#33CCFF',
+    '#6600CC',
+    '#6600FF',
+    '#6633CC',
+    '#6633FF',
+    '#66CC00',
+    '#66CC33',
+    '#9900CC',
+    '#9900FF',
+    '#9933CC',
+    '#9933FF',
+    '#99CC00',
+    '#99CC33',
+    '#CC0000',
+    '#CC0033',
+    '#CC0066',
+    '#CC0099',
+    '#CC00CC',
+    '#CC00FF',
+    '#CC3300',
+    '#CC3333',
+    '#CC3366',
+    '#CC3399',
+    '#CC33CC',
+    '#CC33FF',
+    '#CC6600',
+    '#CC6633',
+    '#CC9900',
+    '#CC9933',
+    '#CCCC00',
+    '#CCCC33',
+    '#FF0000',
+    '#FF0033',
+    '#FF0066',
+    '#FF0099',
+    '#FF00CC',
+    '#FF00FF',
+    '#FF3300',
+    '#FF3333',
+    '#FF3366',
+    '#FF3399',
+    '#FF33CC',
+    '#FF33FF',
+    '#FF6600',
+    '#FF6633',
+    '#FF9900',
+    '#FF9933',
+    '#FFCC00',
+    '#FFCC33'
 ];
 
 /**
@@ -14092,28 +14116,28 @@ exports.colors = [
 
 // eslint-disable-next-line complexity
 function useColors() {
-	// NB: In an Electron preload script, document will be defined but not fully
-	// initialized. Since we know we're in Chrome, we'll just detect this case
-	// explicitly
-	if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
-		return true;
-	}
+    // NB: In an Electron preload script, document will be defined but not fully
+    // initialized. Since we know we're in Chrome, we'll just detect this case
+    // explicitly
+    if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
+        return true;
+    }
 
-	// Internet Explorer and Edge do not support colors.
-	if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
-		return false;
-	}
+    // Internet Explorer and Edge do not support colors.
+    if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
+        return false;
+    }
 
-	// Is webkit? http://stackoverflow.com/a/16459606/376773
-	// document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
-	return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
-		// Is firebug? http://stackoverflow.com/a/398120/376773
-		(typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
-		// Is firefox >= v31?
-		// https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
-		(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31) ||
-		// Double check webkit in userAgent just in case we are in a worker
-		(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
+    // Is webkit? http://stackoverflow.com/a/16459606/376773
+    // document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
+    return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
+        // Is firebug? http://stackoverflow.com/a/398120/376773
+        (typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
+        // Is firefox >= v31?
+        // https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
+        (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31) ||
+        // Double check webkit in userAgent just in case we are in a worker
+        (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
 }
 
 /**
@@ -14123,38 +14147,38 @@ function useColors() {
  */
 
 function formatArgs(args) {
-	args[0] = (this.useColors ? '%c' : '') +
-		this.namespace +
-		(this.useColors ? ' %c' : ' ') +
-		args[0] +
-		(this.useColors ? '%c ' : ' ') +
-		'+' + module.exports.humanize(this.diff);
+    args[0] = (this.useColors ? '%c' : '') +
+        this.namespace +
+        (this.useColors ? ' %c' : ' ') +
+        args[0] +
+        (this.useColors ? '%c ' : ' ') +
+        '+' + module.exports.humanize(this.diff);
 
-	if (!this.useColors) {
-		return;
-	}
+    if (!this.useColors) {
+        return;
+    }
 
-	const c = 'color: ' + this.color;
-	args.splice(1, 0, c, 'color: inherit');
+    const c = 'color: ' + this.color;
+    args.splice(1, 0, c, 'color: inherit');
 
-	// The final "%c" is somewhat tricky, because there could be other
-	// arguments passed either before or after the %c, so we need to
-	// figure out the correct index to insert the CSS into
-	let index = 0;
-	let lastC = 0;
-	args[0].replace(/%[a-zA-Z%]/g, match => {
-		if (match === '%%') {
-			return;
-		}
-		index++;
-		if (match === '%c') {
-			// We only are interested in the *last* %c
-			// (the user may have provided their own)
-			lastC = index;
-		}
-	});
+    // The final "%c" is somewhat tricky, because there could be other
+    // arguments passed either before or after the %c, so we need to
+    // figure out the correct index to insert the CSS into
+    let index = 0;
+    let lastC = 0;
+    args[0].replace(/%[a-zA-Z%]/g, match => {
+        if (match === '%%') {
+            return;
+        }
+        index++;
+        if (match === '%c') {
+            // We only are interested in the *last* %c
+            // (the user may have provided their own)
+            lastC = index;
+        }
+    });
 
-	args.splice(lastC, 0, c);
+    args.splice(lastC, 0, c);
 }
 
 /**
@@ -14174,16 +14198,16 @@ exports.log = console.debug || console.log || (() => {});
  * @api private
  */
 function save(namespaces) {
-	try {
-		if (namespaces) {
-			exports.storage.setItem('debug', namespaces);
-		} else {
-			exports.storage.removeItem('debug');
-		}
-	} catch (error) {
-		// Swallow
-		// XXX (@Qix-) should we be logging these?
-	}
+    try {
+        if (namespaces) {
+            exports.storage.setItem('debug', namespaces);
+        } else {
+            exports.storage.removeItem('debug');
+        }
+    } catch (error) {
+        // Swallow
+        // XXX (@Qix-) should we be logging these?
+    }
 }
 
 /**
@@ -14193,20 +14217,20 @@ function save(namespaces) {
  * @api private
  */
 function load() {
-	let r;
-	try {
-		r = exports.storage.getItem('debug');
-	} catch (error) {
-		// Swallow
-		// XXX (@Qix-) should we be logging these?
-	}
+    let r;
+    try {
+        r = exports.storage.getItem('debug');
+    } catch (error) {
+        // Swallow
+        // XXX (@Qix-) should we be logging these?
+    }
 
-	// If debug isn't set in LS, and we're in Electron, try to load $DEBUG
-	if (!r && typeof process !== 'undefined' && 'env' in process) {
-		r = process.env.DEBUG;
-	}
+    // If debug isn't set in LS, and we're in Electron, try to load $DEBUG
+    if (!r && typeof process !== 'undefined' && 'env' in process) {
+        r = process.env.DEBUG;
+    }
 
-	return r;
+    return r;
 }
 
 /**
@@ -14221,14 +14245,14 @@ function load() {
  */
 
 function localstorage() {
-	try {
-		// TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
-		// The Browser also has localStorage in the global context.
-		return localStorage;
-	} catch (error) {
-		// Swallow
-		// XXX (@Qix-) should we be logging these?
-	}
+    try {
+        // TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
+        // The Browser also has localStorage in the global context.
+        return localStorage;
+    } catch (error) {
+        // Swallow
+        // XXX (@Qix-) should we be logging these?
+    }
 }
 
 module.exports = __nccwpck_require__(6243)(exports);
@@ -14240,11 +14264,11 @@ const {formatters} = module.exports;
  */
 
 formatters.j = function (v) {
-	try {
-		return JSON.stringify(v);
-	} catch (error) {
-		return '[UnexpectedJSONParseError]: ' + error.message;
-	}
+    try {
+        return JSON.stringify(v);
+    } catch (error) {
+        return '[UnexpectedJSONParseError]: ' + error.message;
+    }
 };
 
 
@@ -14260,270 +14284,270 @@ formatters.j = function (v) {
  */
 
 function setup(env) {
-	createDebug.debug = createDebug;
-	createDebug.default = createDebug;
-	createDebug.coerce = coerce;
-	createDebug.disable = disable;
-	createDebug.enable = enable;
-	createDebug.enabled = enabled;
-	createDebug.humanize = __nccwpck_require__(900);
-	createDebug.destroy = destroy;
+    createDebug.debug = createDebug;
+    createDebug.default = createDebug;
+    createDebug.coerce = coerce;
+    createDebug.disable = disable;
+    createDebug.enable = enable;
+    createDebug.enabled = enabled;
+    createDebug.humanize = __nccwpck_require__(900);
+    createDebug.destroy = destroy;
 
-	Object.keys(env).forEach(key => {
-		createDebug[key] = env[key];
-	});
+    Object.keys(env).forEach(key => {
+        createDebug[key] = env[key];
+    });
 
-	/**
-	* The currently active debug mode names, and names to skip.
-	*/
+    /**
+    * The currently active debug mode names, and names to skip.
+    */
 
-	createDebug.names = [];
-	createDebug.skips = [];
+    createDebug.names = [];
+    createDebug.skips = [];
 
-	/**
-	* Map of special "%n" handling functions, for the debug "format" argument.
-	*
-	* Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
-	*/
-	createDebug.formatters = {};
+    /**
+    * Map of special "%n" handling functions, for the debug "format" argument.
+    *
+    * Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
+    */
+    createDebug.formatters = {};
 
-	/**
-	* Selects a color for a debug namespace
-	* @param {String} namespace The namespace string for the debug instance to be colored
-	* @return {Number|String} An ANSI color code for the given namespace
-	* @api private
-	*/
-	function selectColor(namespace) {
-		let hash = 0;
+    /**
+    * Selects a color for a debug namespace
+    * @param {String} namespace The namespace string for the debug instance to be colored
+    * @return {Number|String} An ANSI color code for the given namespace
+    * @api private
+    */
+    function selectColor(namespace) {
+        let hash = 0;
 
-		for (let i = 0; i < namespace.length; i++) {
-			hash = ((hash << 5) - hash) + namespace.charCodeAt(i);
-			hash |= 0; // Convert to 32bit integer
-		}
+        for (let i = 0; i < namespace.length; i++) {
+            hash = ((hash << 5) - hash) + namespace.charCodeAt(i);
+            hash |= 0; // Convert to 32bit integer
+        }
 
-		return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
-	}
-	createDebug.selectColor = selectColor;
+        return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
+    }
+    createDebug.selectColor = selectColor;
 
-	/**
-	* Create a debugger with the given `namespace`.
-	*
-	* @param {String} namespace
-	* @return {Function}
-	* @api public
-	*/
-	function createDebug(namespace) {
-		let prevTime;
-		let enableOverride = null;
-		let namespacesCache;
-		let enabledCache;
+    /**
+    * Create a debugger with the given `namespace`.
+    *
+    * @param {String} namespace
+    * @return {Function}
+    * @api public
+    */
+    function createDebug(namespace) {
+        let prevTime;
+        let enableOverride = null;
+        let namespacesCache;
+        let enabledCache;
 
-		function debug(...args) {
-			// Disabled?
-			if (!debug.enabled) {
-				return;
-			}
+        function debug(...args) {
+            // Disabled?
+            if (!debug.enabled) {
+                return;
+            }
 
-			const self = debug;
+            const self = debug;
 
-			// Set `diff` timestamp
-			const curr = Number(new Date());
-			const ms = curr - (prevTime || curr);
-			self.diff = ms;
-			self.prev = prevTime;
-			self.curr = curr;
-			prevTime = curr;
+            // Set `diff` timestamp
+            const curr = Number(new Date());
+            const ms = curr - (prevTime || curr);
+            self.diff = ms;
+            self.prev = prevTime;
+            self.curr = curr;
+            prevTime = curr;
 
-			args[0] = createDebug.coerce(args[0]);
+            args[0] = createDebug.coerce(args[0]);
 
-			if (typeof args[0] !== 'string') {
-				// Anything else let's inspect with %O
-				args.unshift('%O');
-			}
+            if (typeof args[0] !== 'string') {
+                // Anything else let's inspect with %O
+                args.unshift('%O');
+            }
 
-			// Apply any `formatters` transformations
-			let index = 0;
-			args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
-				// If we encounter an escaped % then don't increase the array index
-				if (match === '%%') {
-					return '%';
-				}
-				index++;
-				const formatter = createDebug.formatters[format];
-				if (typeof formatter === 'function') {
-					const val = args[index];
-					match = formatter.call(self, val);
+            // Apply any `formatters` transformations
+            let index = 0;
+            args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
+                // If we encounter an escaped % then don't increase the array index
+                if (match === '%%') {
+                    return '%';
+                }
+                index++;
+                const formatter = createDebug.formatters[format];
+                if (typeof formatter === 'function') {
+                    const val = args[index];
+                    match = formatter.call(self, val);
 
-					// Now we need to remove `args[index]` since it's inlined in the `format`
-					args.splice(index, 1);
-					index--;
-				}
-				return match;
-			});
+                    // Now we need to remove `args[index]` since it's inlined in the `format`
+                    args.splice(index, 1);
+                    index--;
+                }
+                return match;
+            });
 
-			// Apply env-specific formatting (colors, etc.)
-			createDebug.formatArgs.call(self, args);
+            // Apply env-specific formatting (colors, etc.)
+            createDebug.formatArgs.call(self, args);
 
-			const logFn = self.log || createDebug.log;
-			logFn.apply(self, args);
-		}
+            const logFn = self.log || createDebug.log;
+            logFn.apply(self, args);
+        }
 
-		debug.namespace = namespace;
-		debug.useColors = createDebug.useColors();
-		debug.color = createDebug.selectColor(namespace);
-		debug.extend = extend;
-		debug.destroy = createDebug.destroy; // XXX Temporary. Will be removed in the next major release.
+        debug.namespace = namespace;
+        debug.useColors = createDebug.useColors();
+        debug.color = createDebug.selectColor(namespace);
+        debug.extend = extend;
+        debug.destroy = createDebug.destroy; // XXX Temporary. Will be removed in the next major release.
 
-		Object.defineProperty(debug, 'enabled', {
-			enumerable: true,
-			configurable: false,
-			get: () => {
-				if (enableOverride !== null) {
-					return enableOverride;
-				}
-				if (namespacesCache !== createDebug.namespaces) {
-					namespacesCache = createDebug.namespaces;
-					enabledCache = createDebug.enabled(namespace);
-				}
+        Object.defineProperty(debug, 'enabled', {
+            enumerable: true,
+            configurable: false,
+            get: () => {
+                if (enableOverride !== null) {
+                    return enableOverride;
+                }
+                if (namespacesCache !== createDebug.namespaces) {
+                    namespacesCache = createDebug.namespaces;
+                    enabledCache = createDebug.enabled(namespace);
+                }
 
-				return enabledCache;
-			},
-			set: v => {
-				enableOverride = v;
-			}
-		});
+                return enabledCache;
+            },
+            set: v => {
+                enableOverride = v;
+            }
+        });
 
-		// Env-specific initialization logic for debug instances
-		if (typeof createDebug.init === 'function') {
-			createDebug.init(debug);
-		}
+        // Env-specific initialization logic for debug instances
+        if (typeof createDebug.init === 'function') {
+            createDebug.init(debug);
+        }
 
-		return debug;
-	}
+        return debug;
+    }
 
-	function extend(namespace, delimiter) {
-		const newDebug = createDebug(this.namespace + (typeof delimiter === 'undefined' ? ':' : delimiter) + namespace);
-		newDebug.log = this.log;
-		return newDebug;
-	}
+    function extend(namespace, delimiter) {
+        const newDebug = createDebug(this.namespace + (typeof delimiter === 'undefined' ? ':' : delimiter) + namespace);
+        newDebug.log = this.log;
+        return newDebug;
+    }
 
-	/**
-	* Enables a debug mode by namespaces. This can include modes
-	* separated by a colon and wildcards.
-	*
-	* @param {String} namespaces
-	* @api public
-	*/
-	function enable(namespaces) {
-		createDebug.save(namespaces);
-		createDebug.namespaces = namespaces;
+    /**
+    * Enables a debug mode by namespaces. This can include modes
+    * separated by a colon and wildcards.
+    *
+    * @param {String} namespaces
+    * @api public
+    */
+    function enable(namespaces) {
+        createDebug.save(namespaces);
+        createDebug.namespaces = namespaces;
 
-		createDebug.names = [];
-		createDebug.skips = [];
+        createDebug.names = [];
+        createDebug.skips = [];
 
-		let i;
-		const split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
-		const len = split.length;
+        let i;
+        const split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
+        const len = split.length;
 
-		for (i = 0; i < len; i++) {
-			if (!split[i]) {
-				// ignore empty strings
-				continue;
-			}
+        for (i = 0; i < len; i++) {
+            if (!split[i]) {
+                // ignore empty strings
+                continue;
+            }
 
-			namespaces = split[i].replace(/\*/g, '.*?');
+            namespaces = split[i].replace(/\*/g, '.*?');
 
-			if (namespaces[0] === '-') {
-				createDebug.skips.push(new RegExp('^' + namespaces.slice(1) + '$'));
-			} else {
-				createDebug.names.push(new RegExp('^' + namespaces + '$'));
-			}
-		}
-	}
+            if (namespaces[0] === '-') {
+                createDebug.skips.push(new RegExp('^' + namespaces.slice(1) + '$'));
+            } else {
+                createDebug.names.push(new RegExp('^' + namespaces + '$'));
+            }
+        }
+    }
 
-	/**
-	* Disable debug output.
-	*
-	* @return {String} namespaces
-	* @api public
-	*/
-	function disable() {
-		const namespaces = [
-			...createDebug.names.map(toNamespace),
-			...createDebug.skips.map(toNamespace).map(namespace => '-' + namespace)
-		].join(',');
-		createDebug.enable('');
-		return namespaces;
-	}
+    /**
+    * Disable debug output.
+    *
+    * @return {String} namespaces
+    * @api public
+    */
+    function disable() {
+        const namespaces = [
+            ...createDebug.names.map(toNamespace),
+            ...createDebug.skips.map(toNamespace).map(namespace => '-' + namespace)
+        ].join(',');
+        createDebug.enable('');
+        return namespaces;
+    }
 
-	/**
-	* Returns true if the given mode name is enabled, false otherwise.
-	*
-	* @param {String} name
-	* @return {Boolean}
-	* @api public
-	*/
-	function enabled(name) {
-		if (name[name.length - 1] === '*') {
-			return true;
-		}
+    /**
+    * Returns true if the given mode name is enabled, false otherwise.
+    *
+    * @param {String} name
+    * @return {Boolean}
+    * @api public
+    */
+    function enabled(name) {
+        if (name[name.length - 1] === '*') {
+            return true;
+        }
 
-		let i;
-		let len;
+        let i;
+        let len;
 
-		for (i = 0, len = createDebug.skips.length; i < len; i++) {
-			if (createDebug.skips[i].test(name)) {
-				return false;
-			}
-		}
+        for (i = 0, len = createDebug.skips.length; i < len; i++) {
+            if (createDebug.skips[i].test(name)) {
+                return false;
+            }
+        }
 
-		for (i = 0, len = createDebug.names.length; i < len; i++) {
-			if (createDebug.names[i].test(name)) {
-				return true;
-			}
-		}
+        for (i = 0, len = createDebug.names.length; i < len; i++) {
+            if (createDebug.names[i].test(name)) {
+                return true;
+            }
+        }
 
-		return false;
-	}
+        return false;
+    }
 
-	/**
-	* Convert regexp to namespace
-	*
-	* @param {RegExp} regxep
-	* @return {String} namespace
-	* @api private
-	*/
-	function toNamespace(regexp) {
-		return regexp.toString()
-			.substring(2, regexp.toString().length - 2)
-			.replace(/\.\*\?$/, '*');
-	}
+    /**
+    * Convert regexp to namespace
+    *
+    * @param {RegExp} regxep
+    * @return {String} namespace
+    * @api private
+    */
+    function toNamespace(regexp) {
+        return regexp.toString()
+            .substring(2, regexp.toString().length - 2)
+            .replace(/\.\*\?$/, '*');
+    }
 
-	/**
-	* Coerce `val`.
-	*
-	* @param {Mixed} val
-	* @return {Mixed}
-	* @api private
-	*/
-	function coerce(val) {
-		if (val instanceof Error) {
-			return val.stack || val.message;
-		}
-		return val;
-	}
+    /**
+    * Coerce `val`.
+    *
+    * @param {Mixed} val
+    * @return {Mixed}
+    * @api private
+    */
+    function coerce(val) {
+        if (val instanceof Error) {
+            return val.stack || val.message;
+        }
+        return val;
+    }
 
-	/**
-	* XXX DO NOT USE. This is a temporary stub function.
-	* XXX It WILL be removed in the next major release.
-	*/
-	function destroy() {
-		console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
-	}
+    /**
+    * XXX DO NOT USE. This is a temporary stub function.
+    * XXX It WILL be removed in the next major release.
+    */
+    function destroy() {
+        console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+    }
 
-	createDebug.enable(createDebug.load());
+    createDebug.enable(createDebug.load());
 
-	return createDebug;
+    return createDebug;
 }
 
 module.exports = setup;
@@ -14540,9 +14564,9 @@ module.exports = setup;
  */
 
 if (typeof process === 'undefined' || process.type === 'renderer' || process.browser === true || process.__nwjs) {
-	module.exports = __nccwpck_require__(8222);
+    module.exports = __nccwpck_require__(8222);
 } else {
-	module.exports = __nccwpck_require__(4874);
+    module.exports = __nccwpck_require__(4874);
 }
 
 
@@ -14569,8 +14593,8 @@ exports.save = save;
 exports.load = load;
 exports.useColors = useColors;
 exports.destroy = util.deprecate(
-	() => {},
-	'Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.'
+    () => {},
+    'Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.'
 );
 
 /**
@@ -14580,92 +14604,92 @@ exports.destroy = util.deprecate(
 exports.colors = [6, 2, 3, 4, 5, 1];
 
 try {
-	// Optional dependency (as in, doesn't need to be installed, NOT like optionalDependencies in package.json)
-	// eslint-disable-next-line import/no-extraneous-dependencies
-	const supportsColor = __nccwpck_require__(9318);
+    // Optional dependency (as in, doesn't need to be installed, NOT like optionalDependencies in package.json)
+    // eslint-disable-next-line import/no-extraneous-dependencies
+    const supportsColor = __nccwpck_require__(9318);
 
-	if (supportsColor && (supportsColor.stderr || supportsColor).level >= 2) {
-		exports.colors = [
-			20,
-			21,
-			26,
-			27,
-			32,
-			33,
-			38,
-			39,
-			40,
-			41,
-			42,
-			43,
-			44,
-			45,
-			56,
-			57,
-			62,
-			63,
-			68,
-			69,
-			74,
-			75,
-			76,
-			77,
-			78,
-			79,
-			80,
-			81,
-			92,
-			93,
-			98,
-			99,
-			112,
-			113,
-			128,
-			129,
-			134,
-			135,
-			148,
-			149,
-			160,
-			161,
-			162,
-			163,
-			164,
-			165,
-			166,
-			167,
-			168,
-			169,
-			170,
-			171,
-			172,
-			173,
-			178,
-			179,
-			184,
-			185,
-			196,
-			197,
-			198,
-			199,
-			200,
-			201,
-			202,
-			203,
-			204,
-			205,
-			206,
-			207,
-			208,
-			209,
-			214,
-			215,
-			220,
-			221
-		];
-	}
+    if (supportsColor && (supportsColor.stderr || supportsColor).level >= 2) {
+        exports.colors = [
+            20,
+            21,
+            26,
+            27,
+            32,
+            33,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            56,
+            57,
+            62,
+            63,
+            68,
+            69,
+            74,
+            75,
+            76,
+            77,
+            78,
+            79,
+            80,
+            81,
+            92,
+            93,
+            98,
+            99,
+            112,
+            113,
+            128,
+            129,
+            134,
+            135,
+            148,
+            149,
+            160,
+            161,
+            162,
+            163,
+            164,
+            165,
+            166,
+            167,
+            168,
+            169,
+            170,
+            171,
+            172,
+            173,
+            178,
+            179,
+            184,
+            185,
+            196,
+            197,
+            198,
+            199,
+            200,
+            201,
+            202,
+            203,
+            204,
+            205,
+            206,
+            207,
+            208,
+            209,
+            214,
+            215,
+            220,
+            221
+        ];
+    }
 } catch (error) {
-	// Swallow - we only care if `supports-color` is available; it doesn't have to be.
+    // Swallow - we only care if `supports-color` is available; it doesn't have to be.
 }
 
 /**
@@ -14675,30 +14699,30 @@ try {
  */
 
 exports.inspectOpts = Object.keys(process.env).filter(key => {
-	return /^debug_/i.test(key);
+    return /^debug_/i.test(key);
 }).reduce((obj, key) => {
-	// Camel-case
-	const prop = key
-		.substring(6)
-		.toLowerCase()
-		.replace(/_([a-z])/g, (_, k) => {
-			return k.toUpperCase();
-		});
+    // Camel-case
+    const prop = key
+        .substring(6)
+        .toLowerCase()
+        .replace(/_([a-z])/g, (_, k) => {
+            return k.toUpperCase();
+        });
 
-	// Coerce string value into JS value
-	let val = process.env[key];
-	if (/^(yes|on|true|enabled)$/i.test(val)) {
-		val = true;
-	} else if (/^(no|off|false|disabled)$/i.test(val)) {
-		val = false;
-	} else if (val === 'null') {
-		val = null;
-	} else {
-		val = Number(val);
-	}
+    // Coerce string value into JS value
+    let val = process.env[key];
+    if (/^(yes|on|true|enabled)$/i.test(val)) {
+        val = true;
+    } else if (/^(no|off|false|disabled)$/i.test(val)) {
+        val = false;
+    } else if (val === 'null') {
+        val = null;
+    } else {
+        val = Number(val);
+    }
 
-	obj[prop] = val;
-	return obj;
+    obj[prop] = val;
+    return obj;
 }, {});
 
 /**
@@ -14706,9 +14730,9 @@ exports.inspectOpts = Object.keys(process.env).filter(key => {
  */
 
 function useColors() {
-	return 'colors' in exports.inspectOpts ?
-		Boolean(exports.inspectOpts.colors) :
-		tty.isatty(process.stderr.fd);
+    return 'colors' in exports.inspectOpts ?
+        Boolean(exports.inspectOpts.colors) :
+        tty.isatty(process.stderr.fd);
 }
 
 /**
@@ -14718,25 +14742,25 @@ function useColors() {
  */
 
 function formatArgs(args) {
-	const {namespace: name, useColors} = this;
+    const {namespace: name, useColors} = this;
 
-	if (useColors) {
-		const c = this.color;
-		const colorCode = '\u001B[3' + (c < 8 ? c : '8;5;' + c);
-		const prefix = `  ${colorCode};1m${name} \u001B[0m`;
+    if (useColors) {
+        const c = this.color;
+        const colorCode = '\u001B[3' + (c < 8 ? c : '8;5;' + c);
+        const prefix = `  ${colorCode};1m${name} \u001B[0m`;
 
-		args[0] = prefix + args[0].split('\n').join('\n' + prefix);
-		args.push(colorCode + 'm+' + module.exports.humanize(this.diff) + '\u001B[0m');
-	} else {
-		args[0] = getDate() + name + ' ' + args[0];
-	}
+        args[0] = prefix + args[0].split('\n').join('\n' + prefix);
+        args.push(colorCode + 'm+' + module.exports.humanize(this.diff) + '\u001B[0m');
+    } else {
+        args[0] = getDate() + name + ' ' + args[0];
+    }
 }
 
 function getDate() {
-	if (exports.inspectOpts.hideDate) {
-		return '';
-	}
-	return new Date().toISOString() + ' ';
+    if (exports.inspectOpts.hideDate) {
+        return '';
+    }
+    return new Date().toISOString() + ' ';
 }
 
 /**
@@ -14744,7 +14768,7 @@ function getDate() {
  */
 
 function log(...args) {
-	return process.stderr.write(util.format(...args) + '\n');
+    return process.stderr.write(util.format(...args) + '\n');
 }
 
 /**
@@ -14754,13 +14778,13 @@ function log(...args) {
  * @api private
  */
 function save(namespaces) {
-	if (namespaces) {
-		process.env.DEBUG = namespaces;
-	} else {
-		// If you set a process.env field to null or undefined, it gets cast to the
-		// string 'null' or 'undefined'. Just delete instead.
-		delete process.env.DEBUG;
-	}
+    if (namespaces) {
+        process.env.DEBUG = namespaces;
+    } else {
+        // If you set a process.env field to null or undefined, it gets cast to the
+        // string 'null' or 'undefined'. Just delete instead.
+        delete process.env.DEBUG;
+    }
 }
 
 /**
@@ -14771,7 +14795,7 @@ function save(namespaces) {
  */
 
 function load() {
-	return process.env.DEBUG;
+    return process.env.DEBUG;
 }
 
 /**
@@ -14782,12 +14806,12 @@ function load() {
  */
 
 function init(debug) {
-	debug.inspectOpts = {};
+    debug.inspectOpts = {};
 
-	const keys = Object.keys(exports.inspectOpts);
-	for (let i = 0; i < keys.length; i++) {
-		debug.inspectOpts[keys[i]] = exports.inspectOpts[keys[i]];
-	}
+    const keys = Object.keys(exports.inspectOpts);
+    for (let i = 0; i < keys.length; i++) {
+        debug.inspectOpts[keys[i]] = exports.inspectOpts[keys[i]];
+    }
 }
 
 module.exports = __nccwpck_require__(6243)(exports);
@@ -14799,11 +14823,11 @@ const {formatters} = module.exports;
  */
 
 formatters.o = function (v) {
-	this.inspectOpts.colors = this.useColors;
-	return util.inspect(v, this.inspectOpts)
-		.split('\n')
-		.map(str => str.trim())
-		.join(' ');
+    this.inspectOpts.colors = this.useColors;
+    return util.inspect(v, this.inspectOpts)
+        .split('\n')
+        .map(str => str.trim())
+        .join(' ');
 };
 
 /**
@@ -14811,8 +14835,8 @@ formatters.o = function (v) {
  */
 
 formatters.O = function (v) {
-	this.inspectOpts.colors = this.useColors;
-	return util.inspect(v, this.inspectOpts);
+    this.inspectOpts.colors = this.useColors;
+    return util.inspect(v, this.inspectOpts);
 };
 
 
@@ -16771,10 +16795,10 @@ GlobSync.prototype._makeAbs = function (f) {
 
 
 module.exports = (flag, argv = process.argv) => {
-	const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
-	const position = argv.indexOf(prefix + flag);
-	const terminatorPosition = argv.indexOf('--');
-	return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
+    const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
+    const position = argv.indexOf(prefix + flag);
+    const terminatorPosition = argv.indexOf('--');
+    return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
 };
 
 
@@ -17404,7 +17428,7 @@ exports.ICNS = void 0;
  * ICNS Header
  *
  * | Offset | Size | Purpose                                                |
- * | 0	    | 4    | Magic literal, must be "icns" (0x69, 0x63, 0x6e, 0x73) |
+ * | 0      | 4    | Magic literal, must be "icns" (0x69, 0x63, 0x6e, 0x73) |
  * | 4      | 4    | Length of file, in bytes, msb first.                   |
  *
  */
@@ -17414,7 +17438,7 @@ const FILE_LENGTH_OFFSET = 4; // MSB => BIG ENDIAN
  * Image Entry
  *
  * | Offset | Size | Purpose                                                          |
- * | 0	    | 4    | Icon type, see OSType below.                                     |
+ * | 0      | 4    | Icon type, see OSType below.                                     |
  * | 4      | 4    | Length of data, in bytes (including type and length), msb first. |
  * | 8      | n    | Icon data                                                        |
  */
@@ -17516,7 +17540,7 @@ const TYPE_ICON = 1;
  * ICON Header
  *
  * | Offset | Size | Purpose |
- * | 0	    | 2    | Reserved. Must always be 0.  |
+ * | 0      | 2    | Reserved. Must always be 0.  |
  * | 2      | 2    | Image type: 1 for icon (.ICO) image, 2 for cursor (.CUR) image. Other values are invalid. |
  * | 4      | 2    | Number of images in the file. |
  *
@@ -17526,7 +17550,7 @@ const SIZE_HEADER = 2 + 2 + 2; // 6
  * Image Entry
  *
  * | Offset | Size | Purpose |
- * | 0	    | 1    | Image width in pixels. Can be any number between 0 and 255. Value 0 means width is 256 pixels. |
+ * | 0      | 1    | Image width in pixels. Can be any number between 0 and 255. Value 0 means width is 256 pixels. |
  * | 1      | 1    | Image height in pixels. Can be any number between 0 and 255. Value 0 means height is 256 pixels. |
  * | 2      | 1    | Number of colors in the color palette. Should be 0 if the image does not use a color palette. |
  * | 3      | 1    | Reserved. Should be 0. |
@@ -19570,109 +19594,109 @@ const BUFFER = Symbol('buffer');
 const TYPE = Symbol('type');
 
 class Blob {
-	constructor() {
-		this[TYPE] = '';
+    constructor() {
+        this[TYPE] = '';
 
-		const blobParts = arguments[0];
-		const options = arguments[1];
+        const blobParts = arguments[0];
+        const options = arguments[1];
 
-		const buffers = [];
-		let size = 0;
+        const buffers = [];
+        let size = 0;
 
-		if (blobParts) {
-			const a = blobParts;
-			const length = Number(a.length);
-			for (let i = 0; i < length; i++) {
-				const element = a[i];
-				let buffer;
-				if (element instanceof Buffer) {
-					buffer = element;
-				} else if (ArrayBuffer.isView(element)) {
-					buffer = Buffer.from(element.buffer, element.byteOffset, element.byteLength);
-				} else if (element instanceof ArrayBuffer) {
-					buffer = Buffer.from(element);
-				} else if (element instanceof Blob) {
-					buffer = element[BUFFER];
-				} else {
-					buffer = Buffer.from(typeof element === 'string' ? element : String(element));
-				}
-				size += buffer.length;
-				buffers.push(buffer);
-			}
-		}
+        if (blobParts) {
+            const a = blobParts;
+            const length = Number(a.length);
+            for (let i = 0; i < length; i++) {
+                const element = a[i];
+                let buffer;
+                if (element instanceof Buffer) {
+                    buffer = element;
+                } else if (ArrayBuffer.isView(element)) {
+                    buffer = Buffer.from(element.buffer, element.byteOffset, element.byteLength);
+                } else if (element instanceof ArrayBuffer) {
+                    buffer = Buffer.from(element);
+                } else if (element instanceof Blob) {
+                    buffer = element[BUFFER];
+                } else {
+                    buffer = Buffer.from(typeof element === 'string' ? element : String(element));
+                }
+                size += buffer.length;
+                buffers.push(buffer);
+            }
+        }
 
-		this[BUFFER] = Buffer.concat(buffers);
+        this[BUFFER] = Buffer.concat(buffers);
 
-		let type = options && options.type !== undefined && String(options.type).toLowerCase();
-		if (type && !/[^\u0020-\u007E]/.test(type)) {
-			this[TYPE] = type;
-		}
-	}
-	get size() {
-		return this[BUFFER].length;
-	}
-	get type() {
-		return this[TYPE];
-	}
-	text() {
-		return Promise.resolve(this[BUFFER].toString());
-	}
-	arrayBuffer() {
-		const buf = this[BUFFER];
-		const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-		return Promise.resolve(ab);
-	}
-	stream() {
-		const readable = new Readable();
-		readable._read = function () {};
-		readable.push(this[BUFFER]);
-		readable.push(null);
-		return readable;
-	}
-	toString() {
-		return '[object Blob]';
-	}
-	slice() {
-		const size = this.size;
+        let type = options && options.type !== undefined && String(options.type).toLowerCase();
+        if (type && !/[^\u0020-\u007E]/.test(type)) {
+            this[TYPE] = type;
+        }
+    }
+    get size() {
+        return this[BUFFER].length;
+    }
+    get type() {
+        return this[TYPE];
+    }
+    text() {
+        return Promise.resolve(this[BUFFER].toString());
+    }
+    arrayBuffer() {
+        const buf = this[BUFFER];
+        const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+        return Promise.resolve(ab);
+    }
+    stream() {
+        const readable = new Readable();
+        readable._read = function () {};
+        readable.push(this[BUFFER]);
+        readable.push(null);
+        return readable;
+    }
+    toString() {
+        return '[object Blob]';
+    }
+    slice() {
+        const size = this.size;
 
-		const start = arguments[0];
-		const end = arguments[1];
-		let relativeStart, relativeEnd;
-		if (start === undefined) {
-			relativeStart = 0;
-		} else if (start < 0) {
-			relativeStart = Math.max(size + start, 0);
-		} else {
-			relativeStart = Math.min(start, size);
-		}
-		if (end === undefined) {
-			relativeEnd = size;
-		} else if (end < 0) {
-			relativeEnd = Math.max(size + end, 0);
-		} else {
-			relativeEnd = Math.min(end, size);
-		}
-		const span = Math.max(relativeEnd - relativeStart, 0);
+        const start = arguments[0];
+        const end = arguments[1];
+        let relativeStart, relativeEnd;
+        if (start === undefined) {
+            relativeStart = 0;
+        } else if (start < 0) {
+            relativeStart = Math.max(size + start, 0);
+        } else {
+            relativeStart = Math.min(start, size);
+        }
+        if (end === undefined) {
+            relativeEnd = size;
+        } else if (end < 0) {
+            relativeEnd = Math.max(size + end, 0);
+        } else {
+            relativeEnd = Math.min(end, size);
+        }
+        const span = Math.max(relativeEnd - relativeStart, 0);
 
-		const buffer = this[BUFFER];
-		const slicedBuffer = buffer.slice(relativeStart, relativeStart + span);
-		const blob = new Blob([], { type: arguments[2] });
-		blob[BUFFER] = slicedBuffer;
-		return blob;
-	}
+        const buffer = this[BUFFER];
+        const slicedBuffer = buffer.slice(relativeStart, relativeStart + span);
+        const blob = new Blob([], { type: arguments[2] });
+        blob[BUFFER] = slicedBuffer;
+        return blob;
+    }
 }
 
 Object.defineProperties(Blob.prototype, {
-	size: { enumerable: true },
-	type: { enumerable: true },
-	slice: { enumerable: true }
+    size: { enumerable: true },
+    type: { enumerable: true },
+    slice: { enumerable: true }
 });
 
 Object.defineProperty(Blob.prototype, Symbol.toStringTag, {
-	value: 'Blob',
-	writable: false,
-	enumerable: false,
-	configurable: true
+    value: 'Blob',
+    writable: false,
+    enumerable: false,
+    configurable: true
 });
 
 /**
@@ -19710,7 +19734,7 @@ FetchError.prototype.name = 'FetchError';
 
 let convert;
 try {
-	convert = (__nccwpck_require__(2877).convert);
+    convert = (__nccwpck_require__(2877).convert);
 } catch (e) {}
 
 const INTERNALS = Symbol('Body internals');
@@ -19728,156 +19752,156 @@ const PassThrough = Stream.PassThrough;
  * @return  Void
  */
 function Body(body) {
-	var _this = this;
+    var _this = this;
 
-	var _ref = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-	    _ref$size = _ref.size;
+    var _ref = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+        _ref$size = _ref.size;
 
-	let size = _ref$size === undefined ? 0 : _ref$size;
-	var _ref$timeout = _ref.timeout;
-	let timeout = _ref$timeout === undefined ? 0 : _ref$timeout;
+    let size = _ref$size === undefined ? 0 : _ref$size;
+    var _ref$timeout = _ref.timeout;
+    let timeout = _ref$timeout === undefined ? 0 : _ref$timeout;
 
-	if (body == null) {
-		// body is undefined or null
-		body = null;
-	} else if (isURLSearchParams(body)) {
-		// body is a URLSearchParams
-		body = Buffer.from(body.toString());
-	} else if (isBlob(body)) ; else if (Buffer.isBuffer(body)) ; else if (Object.prototype.toString.call(body) === '[object ArrayBuffer]') {
-		// body is ArrayBuffer
-		body = Buffer.from(body);
-	} else if (ArrayBuffer.isView(body)) {
-		// body is ArrayBufferView
-		body = Buffer.from(body.buffer, body.byteOffset, body.byteLength);
-	} else if (body instanceof Stream) ; else {
-		// none of the above
-		// coerce to string then buffer
-		body = Buffer.from(String(body));
-	}
-	this[INTERNALS] = {
-		body,
-		disturbed: false,
-		error: null
-	};
-	this.size = size;
-	this.timeout = timeout;
+    if (body == null) {
+        // body is undefined or null
+        body = null;
+    } else if (isURLSearchParams(body)) {
+        // body is a URLSearchParams
+        body = Buffer.from(body.toString());
+    } else if (isBlob(body)) ; else if (Buffer.isBuffer(body)) ; else if (Object.prototype.toString.call(body) === '[object ArrayBuffer]') {
+        // body is ArrayBuffer
+        body = Buffer.from(body);
+    } else if (ArrayBuffer.isView(body)) {
+        // body is ArrayBufferView
+        body = Buffer.from(body.buffer, body.byteOffset, body.byteLength);
+    } else if (body instanceof Stream) ; else {
+        // none of the above
+        // coerce to string then buffer
+        body = Buffer.from(String(body));
+    }
+    this[INTERNALS] = {
+        body,
+        disturbed: false,
+        error: null
+    };
+    this.size = size;
+    this.timeout = timeout;
 
-	if (body instanceof Stream) {
-		body.on('error', function (err) {
-			const error = err.name === 'AbortError' ? err : new FetchError(`Invalid response body while trying to fetch ${_this.url}: ${err.message}`, 'system', err);
-			_this[INTERNALS].error = error;
-		});
-	}
+    if (body instanceof Stream) {
+        body.on('error', function (err) {
+            const error = err.name === 'AbortError' ? err : new FetchError(`Invalid response body while trying to fetch ${_this.url}: ${err.message}`, 'system', err);
+            _this[INTERNALS].error = error;
+        });
+    }
 }
 
 Body.prototype = {
-	get body() {
-		return this[INTERNALS].body;
-	},
+    get body() {
+        return this[INTERNALS].body;
+    },
 
-	get bodyUsed() {
-		return this[INTERNALS].disturbed;
-	},
+    get bodyUsed() {
+        return this[INTERNALS].disturbed;
+    },
 
-	/**
+    /**
   * Decode response as ArrayBuffer
   *
   * @return  Promise
   */
-	arrayBuffer() {
-		return consumeBody.call(this).then(function (buf) {
-			return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-		});
-	},
+    arrayBuffer() {
+        return consumeBody.call(this).then(function (buf) {
+            return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+        });
+    },
 
-	/**
+    /**
   * Return raw response as Blob
   *
   * @return Promise
   */
-	blob() {
-		let ct = this.headers && this.headers.get('content-type') || '';
-		return consumeBody.call(this).then(function (buf) {
-			return Object.assign(
-			// Prevent copying
-			new Blob([], {
-				type: ct.toLowerCase()
-			}), {
-				[BUFFER]: buf
-			});
-		});
-	},
+    blob() {
+        let ct = this.headers && this.headers.get('content-type') || '';
+        return consumeBody.call(this).then(function (buf) {
+            return Object.assign(
+            // Prevent copying
+            new Blob([], {
+                type: ct.toLowerCase()
+            }), {
+                [BUFFER]: buf
+            });
+        });
+    },
 
-	/**
+    /**
   * Decode response as json
   *
   * @return  Promise
   */
-	json() {
-		var _this2 = this;
+    json() {
+        var _this2 = this;
 
-		return consumeBody.call(this).then(function (buffer) {
-			try {
-				return JSON.parse(buffer.toString());
-			} catch (err) {
-				return Body.Promise.reject(new FetchError(`invalid json response body at ${_this2.url} reason: ${err.message}`, 'invalid-json'));
-			}
-		});
-	},
+        return consumeBody.call(this).then(function (buffer) {
+            try {
+                return JSON.parse(buffer.toString());
+            } catch (err) {
+                return Body.Promise.reject(new FetchError(`invalid json response body at ${_this2.url} reason: ${err.message}`, 'invalid-json'));
+            }
+        });
+    },
 
-	/**
+    /**
   * Decode response as text
   *
   * @return  Promise
   */
-	text() {
-		return consumeBody.call(this).then(function (buffer) {
-			return buffer.toString();
-		});
-	},
+    text() {
+        return consumeBody.call(this).then(function (buffer) {
+            return buffer.toString();
+        });
+    },
 
-	/**
+    /**
   * Decode response as buffer (non-spec api)
   *
   * @return  Promise
   */
-	buffer() {
-		return consumeBody.call(this);
-	},
+    buffer() {
+        return consumeBody.call(this);
+    },
 
-	/**
+    /**
   * Decode response as text, while automatically detecting the encoding and
   * trying to decode to UTF-8 (non-spec api)
   *
   * @return  Promise
   */
-	textConverted() {
-		var _this3 = this;
+    textConverted() {
+        var _this3 = this;
 
-		return consumeBody.call(this).then(function (buffer) {
-			return convertBody(buffer, _this3.headers);
-		});
-	}
+        return consumeBody.call(this).then(function (buffer) {
+            return convertBody(buffer, _this3.headers);
+        });
+    }
 };
 
 // In browsers, all properties are enumerable.
 Object.defineProperties(Body.prototype, {
-	body: { enumerable: true },
-	bodyUsed: { enumerable: true },
-	arrayBuffer: { enumerable: true },
-	blob: { enumerable: true },
-	json: { enumerable: true },
-	text: { enumerable: true }
+    body: { enumerable: true },
+    bodyUsed: { enumerable: true },
+    arrayBuffer: { enumerable: true },
+    blob: { enumerable: true },
+    json: { enumerable: true },
+    text: { enumerable: true }
 });
 
 Body.mixIn = function (proto) {
-	for (const name of Object.getOwnPropertyNames(Body.prototype)) {
-		// istanbul ignore else: future proof
-		if (!(name in proto)) {
-			const desc = Object.getOwnPropertyDescriptor(Body.prototype, name);
-			Object.defineProperty(proto, name, desc);
-		}
-	}
+    for (const name of Object.getOwnPropertyNames(Body.prototype)) {
+        // istanbul ignore else: future proof
+        if (!(name in proto)) {
+            const desc = Object.getOwnPropertyDescriptor(Body.prototype, name);
+            Object.defineProperty(proto, name, desc);
+        }
+    }
 };
 
 /**
@@ -19888,99 +19912,99 @@ Body.mixIn = function (proto) {
  * @return  Promise
  */
 function consumeBody() {
-	var _this4 = this;
+    var _this4 = this;
 
-	if (this[INTERNALS].disturbed) {
-		return Body.Promise.reject(new TypeError(`body used already for: ${this.url}`));
-	}
+    if (this[INTERNALS].disturbed) {
+        return Body.Promise.reject(new TypeError(`body used already for: ${this.url}`));
+    }
 
-	this[INTERNALS].disturbed = true;
+    this[INTERNALS].disturbed = true;
 
-	if (this[INTERNALS].error) {
-		return Body.Promise.reject(this[INTERNALS].error);
-	}
+    if (this[INTERNALS].error) {
+        return Body.Promise.reject(this[INTERNALS].error);
+    }
 
-	let body = this.body;
+    let body = this.body;
 
-	// body is null
-	if (body === null) {
-		return Body.Promise.resolve(Buffer.alloc(0));
-	}
+    // body is null
+    if (body === null) {
+        return Body.Promise.resolve(Buffer.alloc(0));
+    }
 
-	// body is blob
-	if (isBlob(body)) {
-		body = body.stream();
-	}
+    // body is blob
+    if (isBlob(body)) {
+        body = body.stream();
+    }
 
-	// body is buffer
-	if (Buffer.isBuffer(body)) {
-		return Body.Promise.resolve(body);
-	}
+    // body is buffer
+    if (Buffer.isBuffer(body)) {
+        return Body.Promise.resolve(body);
+    }
 
-	// istanbul ignore if: should never happen
-	if (!(body instanceof Stream)) {
-		return Body.Promise.resolve(Buffer.alloc(0));
-	}
+    // istanbul ignore if: should never happen
+    if (!(body instanceof Stream)) {
+        return Body.Promise.resolve(Buffer.alloc(0));
+    }
 
-	// body is stream
-	// get ready to actually consume the body
-	let accum = [];
-	let accumBytes = 0;
-	let abort = false;
+    // body is stream
+    // get ready to actually consume the body
+    let accum = [];
+    let accumBytes = 0;
+    let abort = false;
 
-	return new Body.Promise(function (resolve, reject) {
-		let resTimeout;
+    return new Body.Promise(function (resolve, reject) {
+        let resTimeout;
 
-		// allow timeout on slow response body
-		if (_this4.timeout) {
-			resTimeout = setTimeout(function () {
-				abort = true;
-				reject(new FetchError(`Response timeout while trying to fetch ${_this4.url} (over ${_this4.timeout}ms)`, 'body-timeout'));
-			}, _this4.timeout);
-		}
+        // allow timeout on slow response body
+        if (_this4.timeout) {
+            resTimeout = setTimeout(function () {
+                abort = true;
+                reject(new FetchError(`Response timeout while trying to fetch ${_this4.url} (over ${_this4.timeout}ms)`, 'body-timeout'));
+            }, _this4.timeout);
+        }
 
-		// handle stream errors
-		body.on('error', function (err) {
-			if (err.name === 'AbortError') {
-				// if the request was aborted, reject with this Error
-				abort = true;
-				reject(err);
-			} else {
-				// other errors, such as incorrect content-encoding
-				reject(new FetchError(`Invalid response body while trying to fetch ${_this4.url}: ${err.message}`, 'system', err));
-			}
-		});
+        // handle stream errors
+        body.on('error', function (err) {
+            if (err.name === 'AbortError') {
+                // if the request was aborted, reject with this Error
+                abort = true;
+                reject(err);
+            } else {
+                // other errors, such as incorrect content-encoding
+                reject(new FetchError(`Invalid response body while trying to fetch ${_this4.url}: ${err.message}`, 'system', err));
+            }
+        });
 
-		body.on('data', function (chunk) {
-			if (abort || chunk === null) {
-				return;
-			}
+        body.on('data', function (chunk) {
+            if (abort || chunk === null) {
+                return;
+            }
 
-			if (_this4.size && accumBytes + chunk.length > _this4.size) {
-				abort = true;
-				reject(new FetchError(`content size at ${_this4.url} over limit: ${_this4.size}`, 'max-size'));
-				return;
-			}
+            if (_this4.size && accumBytes + chunk.length > _this4.size) {
+                abort = true;
+                reject(new FetchError(`content size at ${_this4.url} over limit: ${_this4.size}`, 'max-size'));
+                return;
+            }
 
-			accumBytes += chunk.length;
-			accum.push(chunk);
-		});
+            accumBytes += chunk.length;
+            accum.push(chunk);
+        });
 
-		body.on('end', function () {
-			if (abort) {
-				return;
-			}
+        body.on('end', function () {
+            if (abort) {
+                return;
+            }
 
-			clearTimeout(resTimeout);
+            clearTimeout(resTimeout);
 
-			try {
-				resolve(Buffer.concat(accum, accumBytes));
-			} catch (err) {
-				// handle streams that have accumulated too much data (issue #414)
-				reject(new FetchError(`Could not create Buffer from response body for ${_this4.url}: ${err.message}`, 'system', err));
-			}
-		});
-	});
+            try {
+                resolve(Buffer.concat(accum, accumBytes));
+            } catch (err) {
+                // handle streams that have accumulated too much data (issue #414)
+                reject(new FetchError(`Could not create Buffer from response body for ${_this4.url}: ${err.message}`, 'system', err));
+            }
+        });
+    });
 }
 
 /**
@@ -19992,60 +20016,60 @@ function consumeBody() {
  * @return  String
  */
 function convertBody(buffer, headers) {
-	if (typeof convert !== 'function') {
-		throw new Error('The package `encoding` must be installed to use the textConverted() function');
-	}
+    if (typeof convert !== 'function') {
+        throw new Error('The package `encoding` must be installed to use the textConverted() function');
+    }
 
-	const ct = headers.get('content-type');
-	let charset = 'utf-8';
-	let res, str;
+    const ct = headers.get('content-type');
+    let charset = 'utf-8';
+    let res, str;
 
-	// header
-	if (ct) {
-		res = /charset=([^;]*)/i.exec(ct);
-	}
+    // header
+    if (ct) {
+        res = /charset=([^;]*)/i.exec(ct);
+    }
 
-	// no charset in content type, peek at response body for at most 1024 bytes
-	str = buffer.slice(0, 1024).toString();
+    // no charset in content type, peek at response body for at most 1024 bytes
+    str = buffer.slice(0, 1024).toString();
 
-	// html5
-	if (!res && str) {
-		res = /<meta.+?charset=(['"])(.+?)\1/i.exec(str);
-	}
+    // html5
+    if (!res && str) {
+        res = /<meta.+?charset=(['"])(.+?)\1/i.exec(str);
+    }
 
-	// html4
-	if (!res && str) {
-		res = /<meta[\s]+?http-equiv=(['"])content-type\1[\s]+?content=(['"])(.+?)\2/i.exec(str);
-		if (!res) {
-			res = /<meta[\s]+?content=(['"])(.+?)\1[\s]+?http-equiv=(['"])content-type\3/i.exec(str);
-			if (res) {
-				res.pop(); // drop last quote
-			}
-		}
+    // html4
+    if (!res && str) {
+        res = /<meta[\s]+?http-equiv=(['"])content-type\1[\s]+?content=(['"])(.+?)\2/i.exec(str);
+        if (!res) {
+            res = /<meta[\s]+?content=(['"])(.+?)\1[\s]+?http-equiv=(['"])content-type\3/i.exec(str);
+            if (res) {
+                res.pop(); // drop last quote
+            }
+        }
 
-		if (res) {
-			res = /charset=(.*)/i.exec(res.pop());
-		}
-	}
+        if (res) {
+            res = /charset=(.*)/i.exec(res.pop());
+        }
+    }
 
-	// xml
-	if (!res && str) {
-		res = /<\?xml.+?encoding=(['"])(.+?)\1/i.exec(str);
-	}
+    // xml
+    if (!res && str) {
+        res = /<\?xml.+?encoding=(['"])(.+?)\1/i.exec(str);
+    }
 
-	// found charset
-	if (res) {
-		charset = res.pop();
+    // found charset
+    if (res) {
+        charset = res.pop();
 
-		// prevent decode issues when sites use incorrect encoding
-		// ref: https://hsivonen.fi/encoding-menu/
-		if (charset === 'gb2312' || charset === 'gbk') {
-			charset = 'gb18030';
-		}
-	}
+        // prevent decode issues when sites use incorrect encoding
+        // ref: https://hsivonen.fi/encoding-menu/
+        if (charset === 'gb2312' || charset === 'gbk') {
+            charset = 'gb18030';
+        }
+    }
 
-	// turn raw buffers into a single utf-8 buffer
-	return convert(buffer, 'UTF-8', charset).toString();
+    // turn raw buffers into a single utf-8 buffer
+    return convert(buffer, 'UTF-8', charset).toString();
 }
 
 /**
@@ -20056,13 +20080,13 @@ function convertBody(buffer, headers) {
  * @return  String
  */
 function isURLSearchParams(obj) {
-	// Duck-typing as a necessary condition.
-	if (typeof obj !== 'object' || typeof obj.append !== 'function' || typeof obj.delete !== 'function' || typeof obj.get !== 'function' || typeof obj.getAll !== 'function' || typeof obj.has !== 'function' || typeof obj.set !== 'function') {
-		return false;
-	}
+    // Duck-typing as a necessary condition.
+    if (typeof obj !== 'object' || typeof obj.append !== 'function' || typeof obj.delete !== 'function' || typeof obj.get !== 'function' || typeof obj.getAll !== 'function' || typeof obj.has !== 'function' || typeof obj.set !== 'function') {
+        return false;
+    }
 
-	// Brand-checking and more duck-typing as optional condition.
-	return obj.constructor.name === 'URLSearchParams' || Object.prototype.toString.call(obj) === '[object URLSearchParams]' || typeof obj.sort === 'function';
+    // Brand-checking and more duck-typing as optional condition.
+    return obj.constructor.name === 'URLSearchParams' || Object.prototype.toString.call(obj) === '[object URLSearchParams]' || typeof obj.sort === 'function';
 }
 
 /**
@@ -20071,7 +20095,7 @@ function isURLSearchParams(obj) {
  * @return {boolean}
  */
 function isBlob(obj) {
-	return typeof obj === 'object' && typeof obj.arrayBuffer === 'function' && typeof obj.type === 'string' && typeof obj.stream === 'function' && typeof obj.constructor === 'function' && typeof obj.constructor.name === 'string' && /^(Blob|File)$/.test(obj.constructor.name) && /^(Blob|File)$/.test(obj[Symbol.toStringTag]);
+    return typeof obj === 'object' && typeof obj.arrayBuffer === 'function' && typeof obj.type === 'string' && typeof obj.stream === 'function' && typeof obj.constructor === 'function' && typeof obj.constructor.name === 'string' && /^(Blob|File)$/.test(obj.constructor.name) && /^(Blob|File)$/.test(obj[Symbol.toStringTag]);
 }
 
 /**
@@ -20081,28 +20105,28 @@ function isBlob(obj) {
  * @return  Mixed
  */
 function clone(instance) {
-	let p1, p2;
-	let body = instance.body;
+    let p1, p2;
+    let body = instance.body;
 
-	// don't allow cloning a used body
-	if (instance.bodyUsed) {
-		throw new Error('cannot clone body after it is used');
-	}
+    // don't allow cloning a used body
+    if (instance.bodyUsed) {
+        throw new Error('cannot clone body after it is used');
+    }
 
-	// check that body is a stream and not form-data object
-	// note: we can't clone the form-data object without having it as a dependency
-	if (body instanceof Stream && typeof body.getBoundary !== 'function') {
-		// tee instance body
-		p1 = new PassThrough();
-		p2 = new PassThrough();
-		body.pipe(p1);
-		body.pipe(p2);
-		// set instance body to teed body and return the other teed body
-		instance[INTERNALS].body = p1;
-		body = p2;
-	}
+    // check that body is a stream and not form-data object
+    // note: we can't clone the form-data object without having it as a dependency
+    if (body instanceof Stream && typeof body.getBoundary !== 'function') {
+        // tee instance body
+        p1 = new PassThrough();
+        p2 = new PassThrough();
+        body.pipe(p1);
+        body.pipe(p2);
+        // set instance body to teed body and return the other teed body
+        instance[INTERNALS].body = p1;
+        body = p2;
+    }
 
-	return body;
+    return body;
 }
 
 /**
@@ -20115,38 +20139,38 @@ function clone(instance) {
  * @param   Mixed  instance  Any options.body input
  */
 function extractContentType(body) {
-	if (body === null) {
-		// body is null
-		return null;
-	} else if (typeof body === 'string') {
-		// body is string
-		return 'text/plain;charset=UTF-8';
-	} else if (isURLSearchParams(body)) {
-		// body is a URLSearchParams
-		return 'application/x-www-form-urlencoded;charset=UTF-8';
-	} else if (isBlob(body)) {
-		// body is blob
-		return body.type || null;
-	} else if (Buffer.isBuffer(body)) {
-		// body is buffer
-		return null;
-	} else if (Object.prototype.toString.call(body) === '[object ArrayBuffer]') {
-		// body is ArrayBuffer
-		return null;
-	} else if (ArrayBuffer.isView(body)) {
-		// body is ArrayBufferView
-		return null;
-	} else if (typeof body.getBoundary === 'function') {
-		// detect form data input from form-data module
-		return `multipart/form-data;boundary=${body.getBoundary()}`;
-	} else if (body instanceof Stream) {
-		// body is stream
-		// can't really do much about this
-		return null;
-	} else {
-		// Body constructor defaults other things to string
-		return 'text/plain;charset=UTF-8';
-	}
+    if (body === null) {
+        // body is null
+        return null;
+    } else if (typeof body === 'string') {
+        // body is string
+        return 'text/plain;charset=UTF-8';
+    } else if (isURLSearchParams(body)) {
+        // body is a URLSearchParams
+        return 'application/x-www-form-urlencoded;charset=UTF-8';
+    } else if (isBlob(body)) {
+        // body is blob
+        return body.type || null;
+    } else if (Buffer.isBuffer(body)) {
+        // body is buffer
+        return null;
+    } else if (Object.prototype.toString.call(body) === '[object ArrayBuffer]') {
+        // body is ArrayBuffer
+        return null;
+    } else if (ArrayBuffer.isView(body)) {
+        // body is ArrayBufferView
+        return null;
+    } else if (typeof body.getBoundary === 'function') {
+        // detect form data input from form-data module
+        return `multipart/form-data;boundary=${body.getBoundary()}`;
+    } else if (body instanceof Stream) {
+        // body is stream
+        // can't really do much about this
+        return null;
+    } else {
+        // Body constructor defaults other things to string
+        return 'text/plain;charset=UTF-8';
+    }
 }
 
 /**
@@ -20159,29 +20183,29 @@ function extractContentType(body) {
  * @return  Number?            Number of bytes, or null if not possible
  */
 function getTotalBytes(instance) {
-	const body = instance.body;
+    const body = instance.body;
 
 
-	if (body === null) {
-		// body is null
-		return 0;
-	} else if (isBlob(body)) {
-		return body.size;
-	} else if (Buffer.isBuffer(body)) {
-		// body is buffer
-		return body.length;
-	} else if (body && typeof body.getLengthSync === 'function') {
-		// detect form data input from form-data module
-		if (body._lengthRetrievers && body._lengthRetrievers.length == 0 || // 1.x
-		body.hasKnownLength && body.hasKnownLength()) {
-			// 2.x
-			return body.getLengthSync();
-		}
-		return null;
-	} else {
-		// body is stream
-		return null;
-	}
+    if (body === null) {
+        // body is null
+        return 0;
+    } else if (isBlob(body)) {
+        return body.size;
+    } else if (Buffer.isBuffer(body)) {
+        // body is buffer
+        return body.length;
+    } else if (body && typeof body.getLengthSync === 'function') {
+        // detect form data input from form-data module
+        if (body._lengthRetrievers && body._lengthRetrievers.length == 0 || // 1.x
+        body.hasKnownLength && body.hasKnownLength()) {
+            // 2.x
+            return body.getLengthSync();
+        }
+        return null;
+    } else {
+        // body is stream
+        return null;
+    }
 }
 
 /**
@@ -20191,22 +20215,22 @@ function getTotalBytes(instance) {
  * @return  Void
  */
 function writeToStream(dest, instance) {
-	const body = instance.body;
+    const body = instance.body;
 
 
-	if (body === null) {
-		// body is null
-		dest.end();
-	} else if (isBlob(body)) {
-		body.stream().pipe(dest);
-	} else if (Buffer.isBuffer(body)) {
-		// body is buffer
-		dest.write(body);
-		dest.end();
-	} else {
-		// body is stream
-		body.pipe(dest);
-	}
+    if (body === null) {
+        // body is null
+        dest.end();
+    } else if (isBlob(body)) {
+        body.stream().pipe(dest);
+    } else if (Buffer.isBuffer(body)) {
+        // body is buffer
+        dest.write(body);
+        dest.end();
+    } else {
+        // body is stream
+        body.pipe(dest);
+    }
 }
 
 // expose Promise
@@ -20222,17 +20246,17 @@ const invalidTokenRegex = /[^\^_`a-zA-Z\-0-9!#$%&'*+.|~]/;
 const invalidHeaderCharRegex = /[^\t\x20-\x7e\x80-\xff]/;
 
 function validateName(name) {
-	name = `${name}`;
-	if (invalidTokenRegex.test(name) || name === '') {
-		throw new TypeError(`${name} is not a legal HTTP header name`);
-	}
+    name = `${name}`;
+    if (invalidTokenRegex.test(name) || name === '') {
+        throw new TypeError(`${name} is not a legal HTTP header name`);
+    }
 }
 
 function validateValue(value) {
-	value = `${value}`;
-	if (invalidHeaderCharRegex.test(value)) {
-		throw new TypeError(`${value} is not a legal HTTP header value`);
-	}
+    value = `${value}`;
+    if (invalidHeaderCharRegex.test(value)) {
+        throw new TypeError(`${value} is not a legal HTTP header value`);
+    }
 }
 
 /**
@@ -20244,300 +20268,300 @@ function validateValue(value) {
  * @return  String|Undefined
  */
 function find(map, name) {
-	name = name.toLowerCase();
-	for (const key in map) {
-		if (key.toLowerCase() === name) {
-			return key;
-		}
-	}
-	return undefined;
+    name = name.toLowerCase();
+    for (const key in map) {
+        if (key.toLowerCase() === name) {
+            return key;
+        }
+    }
+    return undefined;
 }
 
 const MAP = Symbol('map');
 class Headers {
-	/**
+    /**
   * Headers class
   *
   * @param   Object  headers  Response headers
   * @return  Void
   */
-	constructor() {
-		let init = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : undefined;
+    constructor() {
+        let init = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : undefined;
 
-		this[MAP] = Object.create(null);
+        this[MAP] = Object.create(null);
 
-		if (init instanceof Headers) {
-			const rawHeaders = init.raw();
-			const headerNames = Object.keys(rawHeaders);
+        if (init instanceof Headers) {
+            const rawHeaders = init.raw();
+            const headerNames = Object.keys(rawHeaders);
 
-			for (const headerName of headerNames) {
-				for (const value of rawHeaders[headerName]) {
-					this.append(headerName, value);
-				}
-			}
+            for (const headerName of headerNames) {
+                for (const value of rawHeaders[headerName]) {
+                    this.append(headerName, value);
+                }
+            }
 
-			return;
-		}
+            return;
+        }
 
-		// We don't worry about converting prop to ByteString here as append()
-		// will handle it.
-		if (init == null) ; else if (typeof init === 'object') {
-			const method = init[Symbol.iterator];
-			if (method != null) {
-				if (typeof method !== 'function') {
-					throw new TypeError('Header pairs must be iterable');
-				}
+        // We don't worry about converting prop to ByteString here as append()
+        // will handle it.
+        if (init == null) ; else if (typeof init === 'object') {
+            const method = init[Symbol.iterator];
+            if (method != null) {
+                if (typeof method !== 'function') {
+                    throw new TypeError('Header pairs must be iterable');
+                }
 
-				// sequence<sequence<ByteString>>
-				// Note: per spec we have to first exhaust the lists then process them
-				const pairs = [];
-				for (const pair of init) {
-					if (typeof pair !== 'object' || typeof pair[Symbol.iterator] !== 'function') {
-						throw new TypeError('Each header pair must be iterable');
-					}
-					pairs.push(Array.from(pair));
-				}
+                // sequence<sequence<ByteString>>
+                // Note: per spec we have to first exhaust the lists then process them
+                const pairs = [];
+                for (const pair of init) {
+                    if (typeof pair !== 'object' || typeof pair[Symbol.iterator] !== 'function') {
+                        throw new TypeError('Each header pair must be iterable');
+                    }
+                    pairs.push(Array.from(pair));
+                }
 
-				for (const pair of pairs) {
-					if (pair.length !== 2) {
-						throw new TypeError('Each header pair must be a name/value tuple');
-					}
-					this.append(pair[0], pair[1]);
-				}
-			} else {
-				// record<ByteString, ByteString>
-				for (const key of Object.keys(init)) {
-					const value = init[key];
-					this.append(key, value);
-				}
-			}
-		} else {
-			throw new TypeError('Provided initializer must be an object');
-		}
-	}
+                for (const pair of pairs) {
+                    if (pair.length !== 2) {
+                        throw new TypeError('Each header pair must be a name/value tuple');
+                    }
+                    this.append(pair[0], pair[1]);
+                }
+            } else {
+                // record<ByteString, ByteString>
+                for (const key of Object.keys(init)) {
+                    const value = init[key];
+                    this.append(key, value);
+                }
+            }
+        } else {
+            throw new TypeError('Provided initializer must be an object');
+        }
+    }
 
-	/**
+    /**
   * Return combined header value given name
   *
   * @param   String  name  Header name
   * @return  Mixed
   */
-	get(name) {
-		name = `${name}`;
-		validateName(name);
-		const key = find(this[MAP], name);
-		if (key === undefined) {
-			return null;
-		}
+    get(name) {
+        name = `${name}`;
+        validateName(name);
+        const key = find(this[MAP], name);
+        if (key === undefined) {
+            return null;
+        }
 
-		return this[MAP][key].join(', ');
-	}
+        return this[MAP][key].join(', ');
+    }
 
-	/**
+    /**
   * Iterate over all headers
   *
   * @param   Function  callback  Executed for each item with parameters (value, name, thisArg)
   * @param   Boolean   thisArg   `this` context for callback function
   * @return  Void
   */
-	forEach(callback) {
-		let thisArg = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : undefined;
+    forEach(callback) {
+        let thisArg = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : undefined;
 
-		let pairs = getHeaders(this);
-		let i = 0;
-		while (i < pairs.length) {
-			var _pairs$i = pairs[i];
-			const name = _pairs$i[0],
-			      value = _pairs$i[1];
+        let pairs = getHeaders(this);
+        let i = 0;
+        while (i < pairs.length) {
+            var _pairs$i = pairs[i];
+            const name = _pairs$i[0],
+                  value = _pairs$i[1];
 
-			callback.call(thisArg, value, name, this);
-			pairs = getHeaders(this);
-			i++;
-		}
-	}
+            callback.call(thisArg, value, name, this);
+            pairs = getHeaders(this);
+            i++;
+        }
+    }
 
-	/**
+    /**
   * Overwrite header values given name
   *
   * @param   String  name   Header name
   * @param   String  value  Header value
   * @return  Void
   */
-	set(name, value) {
-		name = `${name}`;
-		value = `${value}`;
-		validateName(name);
-		validateValue(value);
-		const key = find(this[MAP], name);
-		this[MAP][key !== undefined ? key : name] = [value];
-	}
+    set(name, value) {
+        name = `${name}`;
+        value = `${value}`;
+        validateName(name);
+        validateValue(value);
+        const key = find(this[MAP], name);
+        this[MAP][key !== undefined ? key : name] = [value];
+    }
 
-	/**
+    /**
   * Append a value onto existing header
   *
   * @param   String  name   Header name
   * @param   String  value  Header value
   * @return  Void
   */
-	append(name, value) {
-		name = `${name}`;
-		value = `${value}`;
-		validateName(name);
-		validateValue(value);
-		const key = find(this[MAP], name);
-		if (key !== undefined) {
-			this[MAP][key].push(value);
-		} else {
-			this[MAP][name] = [value];
-		}
-	}
+    append(name, value) {
+        name = `${name}`;
+        value = `${value}`;
+        validateName(name);
+        validateValue(value);
+        const key = find(this[MAP], name);
+        if (key !== undefined) {
+            this[MAP][key].push(value);
+        } else {
+            this[MAP][name] = [value];
+        }
+    }
 
-	/**
+    /**
   * Check for header name existence
   *
   * @param   String   name  Header name
   * @return  Boolean
   */
-	has(name) {
-		name = `${name}`;
-		validateName(name);
-		return find(this[MAP], name) !== undefined;
-	}
+    has(name) {
+        name = `${name}`;
+        validateName(name);
+        return find(this[MAP], name) !== undefined;
+    }
 
-	/**
+    /**
   * Delete all header values given name
   *
   * @param   String  name  Header name
   * @return  Void
   */
-	delete(name) {
-		name = `${name}`;
-		validateName(name);
-		const key = find(this[MAP], name);
-		if (key !== undefined) {
-			delete this[MAP][key];
-		}
-	}
+    delete(name) {
+        name = `${name}`;
+        validateName(name);
+        const key = find(this[MAP], name);
+        if (key !== undefined) {
+            delete this[MAP][key];
+        }
+    }
 
-	/**
+    /**
   * Return raw headers (non-spec api)
   *
   * @return  Object
   */
-	raw() {
-		return this[MAP];
-	}
+    raw() {
+        return this[MAP];
+    }
 
-	/**
+    /**
   * Get an iterator on keys.
   *
   * @return  Iterator
   */
-	keys() {
-		return createHeadersIterator(this, 'key');
-	}
+    keys() {
+        return createHeadersIterator(this, 'key');
+    }
 
-	/**
+    /**
   * Get an iterator on values.
   *
   * @return  Iterator
   */
-	values() {
-		return createHeadersIterator(this, 'value');
-	}
+    values() {
+        return createHeadersIterator(this, 'value');
+    }
 
-	/**
+    /**
   * Get an iterator on entries.
   *
   * This is the default iterator of the Headers object.
   *
   * @return  Iterator
   */
-	[Symbol.iterator]() {
-		return createHeadersIterator(this, 'key+value');
-	}
+    [Symbol.iterator]() {
+        return createHeadersIterator(this, 'key+value');
+    }
 }
 Headers.prototype.entries = Headers.prototype[Symbol.iterator];
 
 Object.defineProperty(Headers.prototype, Symbol.toStringTag, {
-	value: 'Headers',
-	writable: false,
-	enumerable: false,
-	configurable: true
+    value: 'Headers',
+    writable: false,
+    enumerable: false,
+    configurable: true
 });
 
 Object.defineProperties(Headers.prototype, {
-	get: { enumerable: true },
-	forEach: { enumerable: true },
-	set: { enumerable: true },
-	append: { enumerable: true },
-	has: { enumerable: true },
-	delete: { enumerable: true },
-	keys: { enumerable: true },
-	values: { enumerable: true },
-	entries: { enumerable: true }
+    get: { enumerable: true },
+    forEach: { enumerable: true },
+    set: { enumerable: true },
+    append: { enumerable: true },
+    has: { enumerable: true },
+    delete: { enumerable: true },
+    keys: { enumerable: true },
+    values: { enumerable: true },
+    entries: { enumerable: true }
 });
 
 function getHeaders(headers) {
-	let kind = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'key+value';
+    let kind = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'key+value';
 
-	const keys = Object.keys(headers[MAP]).sort();
-	return keys.map(kind === 'key' ? function (k) {
-		return k.toLowerCase();
-	} : kind === 'value' ? function (k) {
-		return headers[MAP][k].join(', ');
-	} : function (k) {
-		return [k.toLowerCase(), headers[MAP][k].join(', ')];
-	});
+    const keys = Object.keys(headers[MAP]).sort();
+    return keys.map(kind === 'key' ? function (k) {
+        return k.toLowerCase();
+    } : kind === 'value' ? function (k) {
+        return headers[MAP][k].join(', ');
+    } : function (k) {
+        return [k.toLowerCase(), headers[MAP][k].join(', ')];
+    });
 }
 
 const INTERNAL = Symbol('internal');
 
 function createHeadersIterator(target, kind) {
-	const iterator = Object.create(HeadersIteratorPrototype);
-	iterator[INTERNAL] = {
-		target,
-		kind,
-		index: 0
-	};
-	return iterator;
+    const iterator = Object.create(HeadersIteratorPrototype);
+    iterator[INTERNAL] = {
+        target,
+        kind,
+        index: 0
+    };
+    return iterator;
 }
 
 const HeadersIteratorPrototype = Object.setPrototypeOf({
-	next() {
-		// istanbul ignore if
-		if (!this || Object.getPrototypeOf(this) !== HeadersIteratorPrototype) {
-			throw new TypeError('Value of `this` is not a HeadersIterator');
-		}
+    next() {
+        // istanbul ignore if
+        if (!this || Object.getPrototypeOf(this) !== HeadersIteratorPrototype) {
+            throw new TypeError('Value of `this` is not a HeadersIterator');
+        }
 
-		var _INTERNAL = this[INTERNAL];
-		const target = _INTERNAL.target,
-		      kind = _INTERNAL.kind,
-		      index = _INTERNAL.index;
+        var _INTERNAL = this[INTERNAL];
+        const target = _INTERNAL.target,
+              kind = _INTERNAL.kind,
+              index = _INTERNAL.index;
 
-		const values = getHeaders(target, kind);
-		const len = values.length;
-		if (index >= len) {
-			return {
-				value: undefined,
-				done: true
-			};
-		}
+        const values = getHeaders(target, kind);
+        const len = values.length;
+        if (index >= len) {
+            return {
+                value: undefined,
+                done: true
+            };
+        }
 
-		this[INTERNAL].index = index + 1;
+        this[INTERNAL].index = index + 1;
 
-		return {
-			value: values[index],
-			done: false
-		};
-	}
+        return {
+            value: values[index],
+            done: false
+        };
+    }
 }, Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]())));
 
 Object.defineProperty(HeadersIteratorPrototype, Symbol.toStringTag, {
-	value: 'HeadersIterator',
-	writable: false,
-	enumerable: false,
-	configurable: true
+    value: 'HeadersIterator',
+    writable: false,
+    enumerable: false,
+    configurable: true
 });
 
 /**
@@ -20547,16 +20571,16 @@ Object.defineProperty(HeadersIteratorPrototype, Symbol.toStringTag, {
  * @return  Object
  */
 function exportNodeCompatibleHeaders(headers) {
-	const obj = Object.assign({ __proto__: null }, headers[MAP]);
+    const obj = Object.assign({ __proto__: null }, headers[MAP]);
 
-	// http.request() only supports string as Host header. This hack makes
-	// specifying custom Host header possible.
-	const hostHeaderKey = find(headers[MAP], 'Host');
-	if (hostHeaderKey !== undefined) {
-		obj[hostHeaderKey] = obj[hostHeaderKey][0];
-	}
+    // http.request() only supports string as Host header. This hack makes
+    // specifying custom Host header possible.
+    const hostHeaderKey = find(headers[MAP], 'Host');
+    if (hostHeaderKey !== undefined) {
+        obj[hostHeaderKey] = obj[hostHeaderKey][0];
+    }
 
-	return obj;
+    return obj;
 }
 
 /**
@@ -20567,27 +20591,27 @@ function exportNodeCompatibleHeaders(headers) {
  * @return  Headers
  */
 function createHeadersLenient(obj) {
-	const headers = new Headers();
-	for (const name of Object.keys(obj)) {
-		if (invalidTokenRegex.test(name)) {
-			continue;
-		}
-		if (Array.isArray(obj[name])) {
-			for (const val of obj[name]) {
-				if (invalidHeaderCharRegex.test(val)) {
-					continue;
-				}
-				if (headers[MAP][name] === undefined) {
-					headers[MAP][name] = [val];
-				} else {
-					headers[MAP][name].push(val);
-				}
-			}
-		} else if (!invalidHeaderCharRegex.test(obj[name])) {
-			headers[MAP][name] = [obj[name]];
-		}
-	}
-	return headers;
+    const headers = new Headers();
+    for (const name of Object.keys(obj)) {
+        if (invalidTokenRegex.test(name)) {
+            continue;
+        }
+        if (Array.isArray(obj[name])) {
+            for (const val of obj[name]) {
+                if (invalidHeaderCharRegex.test(val)) {
+                    continue;
+                }
+                if (headers[MAP][name] === undefined) {
+                    headers[MAP][name] = [val];
+                } else {
+                    headers[MAP][name].push(val);
+                }
+            }
+        } else if (!invalidHeaderCharRegex.test(obj[name])) {
+            headers[MAP][name] = [obj[name]];
+        }
+    }
+    return headers;
 }
 
 const INTERNALS$1 = Symbol('Response internals');
@@ -20603,92 +20627,92 @@ const STATUS_CODES = http.STATUS_CODES;
  * @return  Void
  */
 class Response {
-	constructor() {
-		let body = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
-		let opts = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+    constructor() {
+        let body = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
+        let opts = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
-		Body.call(this, body, opts);
+        Body.call(this, body, opts);
 
-		const status = opts.status || 200;
-		const headers = new Headers(opts.headers);
+        const status = opts.status || 200;
+        const headers = new Headers(opts.headers);
 
-		if (body != null && !headers.has('Content-Type')) {
-			const contentType = extractContentType(body);
-			if (contentType) {
-				headers.append('Content-Type', contentType);
-			}
-		}
+        if (body != null && !headers.has('Content-Type')) {
+            const contentType = extractContentType(body);
+            if (contentType) {
+                headers.append('Content-Type', contentType);
+            }
+        }
 
-		this[INTERNALS$1] = {
-			url: opts.url,
-			status,
-			statusText: opts.statusText || STATUS_CODES[status],
-			headers,
-			counter: opts.counter
-		};
-	}
+        this[INTERNALS$1] = {
+            url: opts.url,
+            status,
+            statusText: opts.statusText || STATUS_CODES[status],
+            headers,
+            counter: opts.counter
+        };
+    }
 
-	get url() {
-		return this[INTERNALS$1].url || '';
-	}
+    get url() {
+        return this[INTERNALS$1].url || '';
+    }
 
-	get status() {
-		return this[INTERNALS$1].status;
-	}
+    get status() {
+        return this[INTERNALS$1].status;
+    }
 
-	/**
+    /**
   * Convenience property representing if the request ended normally
   */
-	get ok() {
-		return this[INTERNALS$1].status >= 200 && this[INTERNALS$1].status < 300;
-	}
+    get ok() {
+        return this[INTERNALS$1].status >= 200 && this[INTERNALS$1].status < 300;
+    }
 
-	get redirected() {
-		return this[INTERNALS$1].counter > 0;
-	}
+    get redirected() {
+        return this[INTERNALS$1].counter > 0;
+    }
 
-	get statusText() {
-		return this[INTERNALS$1].statusText;
-	}
+    get statusText() {
+        return this[INTERNALS$1].statusText;
+    }
 
-	get headers() {
-		return this[INTERNALS$1].headers;
-	}
+    get headers() {
+        return this[INTERNALS$1].headers;
+    }
 
-	/**
+    /**
   * Clone this response
   *
   * @return  Response
   */
-	clone() {
-		return new Response(clone(this), {
-			url: this.url,
-			status: this.status,
-			statusText: this.statusText,
-			headers: this.headers,
-			ok: this.ok,
-			redirected: this.redirected
-		});
-	}
+    clone() {
+        return new Response(clone(this), {
+            url: this.url,
+            status: this.status,
+            statusText: this.statusText,
+            headers: this.headers,
+            ok: this.ok,
+            redirected: this.redirected
+        });
+    }
 }
 
 Body.mixIn(Response.prototype);
 
 Object.defineProperties(Response.prototype, {
-	url: { enumerable: true },
-	status: { enumerable: true },
-	ok: { enumerable: true },
-	redirected: { enumerable: true },
-	statusText: { enumerable: true },
-	headers: { enumerable: true },
-	clone: { enumerable: true }
+    url: { enumerable: true },
+    status: { enumerable: true },
+    ok: { enumerable: true },
+    redirected: { enumerable: true },
+    statusText: { enumerable: true },
+    headers: { enumerable: true },
+    clone: { enumerable: true }
 });
 
 Object.defineProperty(Response.prototype, Symbol.toStringTag, {
-	value: 'Response',
-	writable: false,
-	enumerable: false,
-	configurable: true
+    value: 'Response',
+    writable: false,
+    enumerable: false,
+    configurable: true
 });
 
 const INTERNALS$2 = Symbol('Request internals');
@@ -20705,17 +20729,17 @@ const format_url = Url.format;
  * @return {void}
  */
 function parseURL(urlStr) {
-	/*
- 	Check whether the URL is absolute or not
- 		Scheme: https://tools.ietf.org/html/rfc3986#section-3.1
- 	Absolute URL: https://tools.ietf.org/html/rfc3986#section-4.3
+    /*
+    Check whether the URL is absolute or not
+        Scheme: https://tools.ietf.org/html/rfc3986#section-3.1
+    Absolute URL: https://tools.ietf.org/html/rfc3986#section-4.3
  */
-	if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.exec(urlStr)) {
-		urlStr = new URL(urlStr).toString();
-	}
+    if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.exec(urlStr)) {
+        urlStr = new URL(urlStr).toString();
+    }
 
-	// Fallback to old implementation for arbitrary URLs
-	return parse_url(urlStr);
+    // Fallback to old implementation for arbitrary URLs
+    return parse_url(urlStr);
 }
 
 const streamDestructionSupported = 'destroy' in Stream.Readable.prototype;
@@ -20727,12 +20751,12 @@ const streamDestructionSupported = 'destroy' in Stream.Readable.prototype;
  * @return  Boolean
  */
 function isRequest(input) {
-	return typeof input === 'object' && typeof input[INTERNALS$2] === 'object';
+    return typeof input === 'object' && typeof input[INTERNALS$2] === 'object';
 }
 
 function isAbortSignal(signal) {
-	const proto = signal && typeof signal === 'object' && Object.getPrototypeOf(signal);
-	return !!(proto && proto.constructor.name === 'AbortSignal');
+    const proto = signal && typeof signal === 'object' && Object.getPrototypeOf(signal);
+    return !!(proto && proto.constructor.name === 'AbortSignal');
 }
 
 /**
@@ -20743,118 +20767,118 @@ function isAbortSignal(signal) {
  * @return  Void
  */
 class Request {
-	constructor(input) {
-		let init = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+    constructor(input) {
+        let init = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
-		let parsedURL;
+        let parsedURL;
 
-		// normalize input
-		if (!isRequest(input)) {
-			if (input && input.href) {
-				// in order to support Node.js' Url objects; though WHATWG's URL objects
-				// will fall into this branch also (since their `toString()` will return
-				// `href` property anyway)
-				parsedURL = parseURL(input.href);
-			} else {
-				// coerce input to a string before attempting to parse
-				parsedURL = parseURL(`${input}`);
-			}
-			input = {};
-		} else {
-			parsedURL = parseURL(input.url);
-		}
+        // normalize input
+        if (!isRequest(input)) {
+            if (input && input.href) {
+                // in order to support Node.js' Url objects; though WHATWG's URL objects
+                // will fall into this branch also (since their `toString()` will return
+                // `href` property anyway)
+                parsedURL = parseURL(input.href);
+            } else {
+                // coerce input to a string before attempting to parse
+                parsedURL = parseURL(`${input}`);
+            }
+            input = {};
+        } else {
+            parsedURL = parseURL(input.url);
+        }
 
-		let method = init.method || input.method || 'GET';
-		method = method.toUpperCase();
+        let method = init.method || input.method || 'GET';
+        method = method.toUpperCase();
 
-		if ((init.body != null || isRequest(input) && input.body !== null) && (method === 'GET' || method === 'HEAD')) {
-			throw new TypeError('Request with GET/HEAD method cannot have body');
-		}
+        if ((init.body != null || isRequest(input) && input.body !== null) && (method === 'GET' || method === 'HEAD')) {
+            throw new TypeError('Request with GET/HEAD method cannot have body');
+        }
 
-		let inputBody = init.body != null ? init.body : isRequest(input) && input.body !== null ? clone(input) : null;
+        let inputBody = init.body != null ? init.body : isRequest(input) && input.body !== null ? clone(input) : null;
 
-		Body.call(this, inputBody, {
-			timeout: init.timeout || input.timeout || 0,
-			size: init.size || input.size || 0
-		});
+        Body.call(this, inputBody, {
+            timeout: init.timeout || input.timeout || 0,
+            size: init.size || input.size || 0
+        });
 
-		const headers = new Headers(init.headers || input.headers || {});
+        const headers = new Headers(init.headers || input.headers || {});
 
-		if (inputBody != null && !headers.has('Content-Type')) {
-			const contentType = extractContentType(inputBody);
-			if (contentType) {
-				headers.append('Content-Type', contentType);
-			}
-		}
+        if (inputBody != null && !headers.has('Content-Type')) {
+            const contentType = extractContentType(inputBody);
+            if (contentType) {
+                headers.append('Content-Type', contentType);
+            }
+        }
 
-		let signal = isRequest(input) ? input.signal : null;
-		if ('signal' in init) signal = init.signal;
+        let signal = isRequest(input) ? input.signal : null;
+        if ('signal' in init) signal = init.signal;
 
-		if (signal != null && !isAbortSignal(signal)) {
-			throw new TypeError('Expected signal to be an instanceof AbortSignal');
-		}
+        if (signal != null && !isAbortSignal(signal)) {
+            throw new TypeError('Expected signal to be an instanceof AbortSignal');
+        }
 
-		this[INTERNALS$2] = {
-			method,
-			redirect: init.redirect || input.redirect || 'follow',
-			headers,
-			parsedURL,
-			signal
-		};
+        this[INTERNALS$2] = {
+            method,
+            redirect: init.redirect || input.redirect || 'follow',
+            headers,
+            parsedURL,
+            signal
+        };
 
-		// node-fetch-only options
-		this.follow = init.follow !== undefined ? init.follow : input.follow !== undefined ? input.follow : 20;
-		this.compress = init.compress !== undefined ? init.compress : input.compress !== undefined ? input.compress : true;
-		this.counter = init.counter || input.counter || 0;
-		this.agent = init.agent || input.agent;
-	}
+        // node-fetch-only options
+        this.follow = init.follow !== undefined ? init.follow : input.follow !== undefined ? input.follow : 20;
+        this.compress = init.compress !== undefined ? init.compress : input.compress !== undefined ? input.compress : true;
+        this.counter = init.counter || input.counter || 0;
+        this.agent = init.agent || input.agent;
+    }
 
-	get method() {
-		return this[INTERNALS$2].method;
-	}
+    get method() {
+        return this[INTERNALS$2].method;
+    }
 
-	get url() {
-		return format_url(this[INTERNALS$2].parsedURL);
-	}
+    get url() {
+        return format_url(this[INTERNALS$2].parsedURL);
+    }
 
-	get headers() {
-		return this[INTERNALS$2].headers;
-	}
+    get headers() {
+        return this[INTERNALS$2].headers;
+    }
 
-	get redirect() {
-		return this[INTERNALS$2].redirect;
-	}
+    get redirect() {
+        return this[INTERNALS$2].redirect;
+    }
 
-	get signal() {
-		return this[INTERNALS$2].signal;
-	}
+    get signal() {
+        return this[INTERNALS$2].signal;
+    }
 
-	/**
+    /**
   * Clone this request
   *
   * @return  Request
   */
-	clone() {
-		return new Request(this);
-	}
+    clone() {
+        return new Request(this);
+    }
 }
 
 Body.mixIn(Request.prototype);
 
 Object.defineProperty(Request.prototype, Symbol.toStringTag, {
-	value: 'Request',
-	writable: false,
-	enumerable: false,
-	configurable: true
+    value: 'Request',
+    writable: false,
+    enumerable: false,
+    configurable: true
 });
 
 Object.defineProperties(Request.prototype, {
-	method: { enumerable: true },
-	url: { enumerable: true },
-	headers: { enumerable: true },
-	redirect: { enumerable: true },
-	clone: { enumerable: true },
-	signal: { enumerable: true }
+    method: { enumerable: true },
+    url: { enumerable: true },
+    headers: { enumerable: true },
+    redirect: { enumerable: true },
+    clone: { enumerable: true },
+    signal: { enumerable: true }
 });
 
 /**
@@ -20864,69 +20888,69 @@ Object.defineProperties(Request.prototype, {
  * @return  Object   The options object to be passed to http.request
  */
 function getNodeRequestOptions(request) {
-	const parsedURL = request[INTERNALS$2].parsedURL;
-	const headers = new Headers(request[INTERNALS$2].headers);
+    const parsedURL = request[INTERNALS$2].parsedURL;
+    const headers = new Headers(request[INTERNALS$2].headers);
 
-	// fetch step 1.3
-	if (!headers.has('Accept')) {
-		headers.set('Accept', '*/*');
-	}
+    // fetch step 1.3
+    if (!headers.has('Accept')) {
+        headers.set('Accept', '*/*');
+    }
 
-	// Basic fetch
-	if (!parsedURL.protocol || !parsedURL.hostname) {
-		throw new TypeError('Only absolute URLs are supported');
-	}
+    // Basic fetch
+    if (!parsedURL.protocol || !parsedURL.hostname) {
+        throw new TypeError('Only absolute URLs are supported');
+    }
 
-	if (!/^https?:$/.test(parsedURL.protocol)) {
-		throw new TypeError('Only HTTP(S) protocols are supported');
-	}
+    if (!/^https?:$/.test(parsedURL.protocol)) {
+        throw new TypeError('Only HTTP(S) protocols are supported');
+    }
 
-	if (request.signal && request.body instanceof Stream.Readable && !streamDestructionSupported) {
-		throw new Error('Cancellation of streamed requests with AbortSignal is not supported in node < 8');
-	}
+    if (request.signal && request.body instanceof Stream.Readable && !streamDestructionSupported) {
+        throw new Error('Cancellation of streamed requests with AbortSignal is not supported in node < 8');
+    }
 
-	// HTTP-network-or-cache fetch steps 2.4-2.7
-	let contentLengthValue = null;
-	if (request.body == null && /^(POST|PUT)$/i.test(request.method)) {
-		contentLengthValue = '0';
-	}
-	if (request.body != null) {
-		const totalBytes = getTotalBytes(request);
-		if (typeof totalBytes === 'number') {
-			contentLengthValue = String(totalBytes);
-		}
-	}
-	if (contentLengthValue) {
-		headers.set('Content-Length', contentLengthValue);
-	}
+    // HTTP-network-or-cache fetch steps 2.4-2.7
+    let contentLengthValue = null;
+    if (request.body == null && /^(POST|PUT)$/i.test(request.method)) {
+        contentLengthValue = '0';
+    }
+    if (request.body != null) {
+        const totalBytes = getTotalBytes(request);
+        if (typeof totalBytes === 'number') {
+            contentLengthValue = String(totalBytes);
+        }
+    }
+    if (contentLengthValue) {
+        headers.set('Content-Length', contentLengthValue);
+    }
 
-	// HTTP-network-or-cache fetch step 2.11
-	if (!headers.has('User-Agent')) {
-		headers.set('User-Agent', 'node-fetch/1.0 (+https://github.com/bitinn/node-fetch)');
-	}
+    // HTTP-network-or-cache fetch step 2.11
+    if (!headers.has('User-Agent')) {
+        headers.set('User-Agent', 'node-fetch/1.0 (+https://github.com/bitinn/node-fetch)');
+    }
 
-	// HTTP-network-or-cache fetch step 2.15
-	if (request.compress && !headers.has('Accept-Encoding')) {
-		headers.set('Accept-Encoding', 'gzip,deflate');
-	}
+    // HTTP-network-or-cache fetch step 2.15
+    if (request.compress && !headers.has('Accept-Encoding')) {
+        headers.set('Accept-Encoding', 'gzip,deflate');
+    }
 
-	let agent = request.agent;
-	if (typeof agent === 'function') {
-		agent = agent(parsedURL);
-	}
+    let agent = request.agent;
+    if (typeof agent === 'function') {
+        agent = agent(parsedURL);
+    }
 
-	if (!headers.has('Connection') && !agent) {
-		headers.set('Connection', 'close');
-	}
+    if (!headers.has('Connection') && !agent) {
+        headers.set('Connection', 'close');
+    }
 
-	// HTTP-network fetch step 4.2
-	// chunked encoding is handled by Node.js
+    // HTTP-network fetch step 4.2
+    // chunked encoding is handled by Node.js
 
-	return Object.assign({}, parsedURL, {
-		method: request.method,
-		headers: exportNodeCompatibleHeaders(headers),
-		agent
-	});
+    return Object.assign({}, parsedURL, {
+        method: request.method,
+        headers: exportNodeCompatibleHeaders(headers),
+        agent
+    });
 }
 
 /**
@@ -20961,10 +20985,10 @@ const URL$1 = Url.URL || whatwgUrl.URL;
 const PassThrough$1 = Stream.PassThrough;
 
 const isDomainOrSubdomain = function isDomainOrSubdomain(destination, original) {
-	const orig = new URL$1(original).hostname;
-	const dest = new URL$1(destination).hostname;
+    const orig = new URL$1(original).hostname;
+    const dest = new URL$1(destination).hostname;
 
-	return orig === dest || orig[orig.length - dest.length - 1] === '.' && orig.endsWith(dest);
+    return orig === dest || orig[orig.length - dest.length - 1] === '.' && orig.endsWith(dest);
 };
 
 /**
@@ -20975,10 +20999,10 @@ const isDomainOrSubdomain = function isDomainOrSubdomain(destination, original) 
  * @param {string|URL} destination
  */
 const isSameProtocol = function isSameProtocol(destination, original) {
-	const orig = new URL$1(original).protocol;
-	const dest = new URL$1(destination).protocol;
+    const orig = new URL$1(original).protocol;
+    const dest = new URL$1(destination).protocol;
 
-	return orig === dest;
+    return orig === dest;
 };
 
 /**
@@ -20990,329 +21014,329 @@ const isSameProtocol = function isSameProtocol(destination, original) {
  */
 function fetch(url, opts) {
 
-	// allow custom promise
-	if (!fetch.Promise) {
-		throw new Error('native promise missing, set fetch.Promise to your favorite alternative');
-	}
+    // allow custom promise
+    if (!fetch.Promise) {
+        throw new Error('native promise missing, set fetch.Promise to your favorite alternative');
+    }
 
-	Body.Promise = fetch.Promise;
+    Body.Promise = fetch.Promise;
 
-	// wrap http.request into fetch
-	return new fetch.Promise(function (resolve, reject) {
-		// build request object
-		const request = new Request(url, opts);
-		const options = getNodeRequestOptions(request);
+    // wrap http.request into fetch
+    return new fetch.Promise(function (resolve, reject) {
+        // build request object
+        const request = new Request(url, opts);
+        const options = getNodeRequestOptions(request);
 
-		const send = (options.protocol === 'https:' ? https : http).request;
-		const signal = request.signal;
+        const send = (options.protocol === 'https:' ? https : http).request;
+        const signal = request.signal;
 
-		let response = null;
+        let response = null;
 
-		const abort = function abort() {
-			let error = new AbortError('The user aborted a request.');
-			reject(error);
-			if (request.body && request.body instanceof Stream.Readable) {
-				destroyStream(request.body, error);
-			}
-			if (!response || !response.body) return;
-			response.body.emit('error', error);
-		};
+        const abort = function abort() {
+            let error = new AbortError('The user aborted a request.');
+            reject(error);
+            if (request.body && request.body instanceof Stream.Readable) {
+                destroyStream(request.body, error);
+            }
+            if (!response || !response.body) return;
+            response.body.emit('error', error);
+        };
 
-		if (signal && signal.aborted) {
-			abort();
-			return;
-		}
+        if (signal && signal.aborted) {
+            abort();
+            return;
+        }
 
-		const abortAndFinalize = function abortAndFinalize() {
-			abort();
-			finalize();
-		};
+        const abortAndFinalize = function abortAndFinalize() {
+            abort();
+            finalize();
+        };
 
-		// send request
-		const req = send(options);
-		let reqTimeout;
+        // send request
+        const req = send(options);
+        let reqTimeout;
 
-		if (signal) {
-			signal.addEventListener('abort', abortAndFinalize);
-		}
+        if (signal) {
+            signal.addEventListener('abort', abortAndFinalize);
+        }
 
-		function finalize() {
-			req.abort();
-			if (signal) signal.removeEventListener('abort', abortAndFinalize);
-			clearTimeout(reqTimeout);
-		}
+        function finalize() {
+            req.abort();
+            if (signal) signal.removeEventListener('abort', abortAndFinalize);
+            clearTimeout(reqTimeout);
+        }
 
-		if (request.timeout) {
-			req.once('socket', function (socket) {
-				reqTimeout = setTimeout(function () {
-					reject(new FetchError(`network timeout at: ${request.url}`, 'request-timeout'));
-					finalize();
-				}, request.timeout);
-			});
-		}
+        if (request.timeout) {
+            req.once('socket', function (socket) {
+                reqTimeout = setTimeout(function () {
+                    reject(new FetchError(`network timeout at: ${request.url}`, 'request-timeout'));
+                    finalize();
+                }, request.timeout);
+            });
+        }
 
-		req.on('error', function (err) {
-			reject(new FetchError(`request to ${request.url} failed, reason: ${err.message}`, 'system', err));
+        req.on('error', function (err) {
+            reject(new FetchError(`request to ${request.url} failed, reason: ${err.message}`, 'system', err));
 
-			if (response && response.body) {
-				destroyStream(response.body, err);
-			}
+            if (response && response.body) {
+                destroyStream(response.body, err);
+            }
 
-			finalize();
-		});
+            finalize();
+        });
 
-		fixResponseChunkedTransferBadEnding(req, function (err) {
-			if (signal && signal.aborted) {
-				return;
-			}
+        fixResponseChunkedTransferBadEnding(req, function (err) {
+            if (signal && signal.aborted) {
+                return;
+            }
 
-			if (response && response.body) {
-				destroyStream(response.body, err);
-			}
-		});
+            if (response && response.body) {
+                destroyStream(response.body, err);
+            }
+        });
 
-		/* c8 ignore next 18 */
-		if (parseInt(process.version.substring(1)) < 14) {
-			// Before Node.js 14, pipeline() does not fully support async iterators and does not always
-			// properly handle when the socket close/end events are out of order.
-			req.on('socket', function (s) {
-				s.addListener('close', function (hadError) {
-					// if a data listener is still present we didn't end cleanly
-					const hasDataListener = s.listenerCount('data') > 0;
+        /* c8 ignore next 18 */
+        if (parseInt(process.version.substring(1)) < 14) {
+            // Before Node.js 14, pipeline() does not fully support async iterators and does not always
+            // properly handle when the socket close/end events are out of order.
+            req.on('socket', function (s) {
+                s.addListener('close', function (hadError) {
+                    // if a data listener is still present we didn't end cleanly
+                    const hasDataListener = s.listenerCount('data') > 0;
 
-					// if end happened before close but the socket didn't emit an error, do it now
-					if (response && hasDataListener && !hadError && !(signal && signal.aborted)) {
-						const err = new Error('Premature close');
-						err.code = 'ERR_STREAM_PREMATURE_CLOSE';
-						response.body.emit('error', err);
-					}
-				});
-			});
-		}
+                    // if end happened before close but the socket didn't emit an error, do it now
+                    if (response && hasDataListener && !hadError && !(signal && signal.aborted)) {
+                        const err = new Error('Premature close');
+                        err.code = 'ERR_STREAM_PREMATURE_CLOSE';
+                        response.body.emit('error', err);
+                    }
+                });
+            });
+        }
 
-		req.on('response', function (res) {
-			clearTimeout(reqTimeout);
+        req.on('response', function (res) {
+            clearTimeout(reqTimeout);
 
-			const headers = createHeadersLenient(res.headers);
+            const headers = createHeadersLenient(res.headers);
 
-			// HTTP fetch step 5
-			if (fetch.isRedirect(res.statusCode)) {
-				// HTTP fetch step 5.2
-				const location = headers.get('Location');
+            // HTTP fetch step 5
+            if (fetch.isRedirect(res.statusCode)) {
+                // HTTP fetch step 5.2
+                const location = headers.get('Location');
 
-				// HTTP fetch step 5.3
-				let locationURL = null;
-				try {
-					locationURL = location === null ? null : new URL$1(location, request.url).toString();
-				} catch (err) {
-					// error here can only be invalid URL in Location: header
-					// do not throw when options.redirect == manual
-					// let the user extract the errorneous redirect URL
-					if (request.redirect !== 'manual') {
-						reject(new FetchError(`uri requested responds with an invalid redirect URL: ${location}`, 'invalid-redirect'));
-						finalize();
-						return;
-					}
-				}
+                // HTTP fetch step 5.3
+                let locationURL = null;
+                try {
+                    locationURL = location === null ? null : new URL$1(location, request.url).toString();
+                } catch (err) {
+                    // error here can only be invalid URL in Location: header
+                    // do not throw when options.redirect == manual
+                    // let the user extract the errorneous redirect URL
+                    if (request.redirect !== 'manual') {
+                        reject(new FetchError(`uri requested responds with an invalid redirect URL: ${location}`, 'invalid-redirect'));
+                        finalize();
+                        return;
+                    }
+                }
 
-				// HTTP fetch step 5.5
-				switch (request.redirect) {
-					case 'error':
-						reject(new FetchError(`uri requested responds with a redirect, redirect mode is set to error: ${request.url}`, 'no-redirect'));
-						finalize();
-						return;
-					case 'manual':
-						// node-fetch-specific step: make manual redirect a bit easier to use by setting the Location header value to the resolved URL.
-						if (locationURL !== null) {
-							// handle corrupted header
-							try {
-								headers.set('Location', locationURL);
-							} catch (err) {
-								// istanbul ignore next: nodejs server prevent invalid response headers, we can't test this through normal request
-								reject(err);
-							}
-						}
-						break;
-					case 'follow':
-						// HTTP-redirect fetch step 2
-						if (locationURL === null) {
-							break;
-						}
+                // HTTP fetch step 5.5
+                switch (request.redirect) {
+                    case 'error':
+                        reject(new FetchError(`uri requested responds with a redirect, redirect mode is set to error: ${request.url}`, 'no-redirect'));
+                        finalize();
+                        return;
+                    case 'manual':
+                        // node-fetch-specific step: make manual redirect a bit easier to use by setting the Location header value to the resolved URL.
+                        if (locationURL !== null) {
+                            // handle corrupted header
+                            try {
+                                headers.set('Location', locationURL);
+                            } catch (err) {
+                                // istanbul ignore next: nodejs server prevent invalid response headers, we can't test this through normal request
+                                reject(err);
+                            }
+                        }
+                        break;
+                    case 'follow':
+                        // HTTP-redirect fetch step 2
+                        if (locationURL === null) {
+                            break;
+                        }
 
-						// HTTP-redirect fetch step 5
-						if (request.counter >= request.follow) {
-							reject(new FetchError(`maximum redirect reached at: ${request.url}`, 'max-redirect'));
-							finalize();
-							return;
-						}
+                        // HTTP-redirect fetch step 5
+                        if (request.counter >= request.follow) {
+                            reject(new FetchError(`maximum redirect reached at: ${request.url}`, 'max-redirect'));
+                            finalize();
+                            return;
+                        }
 
-						// HTTP-redirect fetch step 6 (counter increment)
-						// Create a new Request object.
-						const requestOpts = {
-							headers: new Headers(request.headers),
-							follow: request.follow,
-							counter: request.counter + 1,
-							agent: request.agent,
-							compress: request.compress,
-							method: request.method,
-							body: request.body,
-							signal: request.signal,
-							timeout: request.timeout,
-							size: request.size
-						};
+                        // HTTP-redirect fetch step 6 (counter increment)
+                        // Create a new Request object.
+                        const requestOpts = {
+                            headers: new Headers(request.headers),
+                            follow: request.follow,
+                            counter: request.counter + 1,
+                            agent: request.agent,
+                            compress: request.compress,
+                            method: request.method,
+                            body: request.body,
+                            signal: request.signal,
+                            timeout: request.timeout,
+                            size: request.size
+                        };
 
-						if (!isDomainOrSubdomain(request.url, locationURL) || !isSameProtocol(request.url, locationURL)) {
-							for (const name of ['authorization', 'www-authenticate', 'cookie', 'cookie2']) {
-								requestOpts.headers.delete(name);
-							}
-						}
+                        if (!isDomainOrSubdomain(request.url, locationURL) || !isSameProtocol(request.url, locationURL)) {
+                            for (const name of ['authorization', 'www-authenticate', 'cookie', 'cookie2']) {
+                                requestOpts.headers.delete(name);
+                            }
+                        }
 
-						// HTTP-redirect fetch step 9
-						if (res.statusCode !== 303 && request.body && getTotalBytes(request) === null) {
-							reject(new FetchError('Cannot follow redirect with body being a readable stream', 'unsupported-redirect'));
-							finalize();
-							return;
-						}
+                        // HTTP-redirect fetch step 9
+                        if (res.statusCode !== 303 && request.body && getTotalBytes(request) === null) {
+                            reject(new FetchError('Cannot follow redirect with body being a readable stream', 'unsupported-redirect'));
+                            finalize();
+                            return;
+                        }
 
-						// HTTP-redirect fetch step 11
-						if (res.statusCode === 303 || (res.statusCode === 301 || res.statusCode === 302) && request.method === 'POST') {
-							requestOpts.method = 'GET';
-							requestOpts.body = undefined;
-							requestOpts.headers.delete('content-length');
-						}
+                        // HTTP-redirect fetch step 11
+                        if (res.statusCode === 303 || (res.statusCode === 301 || res.statusCode === 302) && request.method === 'POST') {
+                            requestOpts.method = 'GET';
+                            requestOpts.body = undefined;
+                            requestOpts.headers.delete('content-length');
+                        }
 
-						// HTTP-redirect fetch step 15
-						resolve(fetch(new Request(locationURL, requestOpts)));
-						finalize();
-						return;
-				}
-			}
+                        // HTTP-redirect fetch step 15
+                        resolve(fetch(new Request(locationURL, requestOpts)));
+                        finalize();
+                        return;
+                }
+            }
 
-			// prepare response
-			res.once('end', function () {
-				if (signal) signal.removeEventListener('abort', abortAndFinalize);
-			});
-			let body = res.pipe(new PassThrough$1());
+            // prepare response
+            res.once('end', function () {
+                if (signal) signal.removeEventListener('abort', abortAndFinalize);
+            });
+            let body = res.pipe(new PassThrough$1());
 
-			const response_options = {
-				url: request.url,
-				status: res.statusCode,
-				statusText: res.statusMessage,
-				headers: headers,
-				size: request.size,
-				timeout: request.timeout,
-				counter: request.counter
-			};
+            const response_options = {
+                url: request.url,
+                status: res.statusCode,
+                statusText: res.statusMessage,
+                headers: headers,
+                size: request.size,
+                timeout: request.timeout,
+                counter: request.counter
+            };
 
-			// HTTP-network fetch step 12.1.1.3
-			const codings = headers.get('Content-Encoding');
+            // HTTP-network fetch step 12.1.1.3
+            const codings = headers.get('Content-Encoding');
 
-			// HTTP-network fetch step 12.1.1.4: handle content codings
+            // HTTP-network fetch step 12.1.1.4: handle content codings
 
-			// in following scenarios we ignore compression support
-			// 1. compression support is disabled
-			// 2. HEAD request
-			// 3. no Content-Encoding header
-			// 4. no content response (204)
-			// 5. content not modified response (304)
-			if (!request.compress || request.method === 'HEAD' || codings === null || res.statusCode === 204 || res.statusCode === 304) {
-				response = new Response(body, response_options);
-				resolve(response);
-				return;
-			}
+            // in following scenarios we ignore compression support
+            // 1. compression support is disabled
+            // 2. HEAD request
+            // 3. no Content-Encoding header
+            // 4. no content response (204)
+            // 5. content not modified response (304)
+            if (!request.compress || request.method === 'HEAD' || codings === null || res.statusCode === 204 || res.statusCode === 304) {
+                response = new Response(body, response_options);
+                resolve(response);
+                return;
+            }
 
-			// For Node v6+
-			// Be less strict when decoding compressed responses, since sometimes
-			// servers send slightly invalid responses that are still accepted
-			// by common browsers.
-			// Always using Z_SYNC_FLUSH is what cURL does.
-			const zlibOptions = {
-				flush: zlib.Z_SYNC_FLUSH,
-				finishFlush: zlib.Z_SYNC_FLUSH
-			};
+            // For Node v6+
+            // Be less strict when decoding compressed responses, since sometimes
+            // servers send slightly invalid responses that are still accepted
+            // by common browsers.
+            // Always using Z_SYNC_FLUSH is what cURL does.
+            const zlibOptions = {
+                flush: zlib.Z_SYNC_FLUSH,
+                finishFlush: zlib.Z_SYNC_FLUSH
+            };
 
-			// for gzip
-			if (codings == 'gzip' || codings == 'x-gzip') {
-				body = body.pipe(zlib.createGunzip(zlibOptions));
-				response = new Response(body, response_options);
-				resolve(response);
-				return;
-			}
+            // for gzip
+            if (codings == 'gzip' || codings == 'x-gzip') {
+                body = body.pipe(zlib.createGunzip(zlibOptions));
+                response = new Response(body, response_options);
+                resolve(response);
+                return;
+            }
 
-			// for deflate
-			if (codings == 'deflate' || codings == 'x-deflate') {
-				// handle the infamous raw deflate response from old servers
-				// a hack for old IIS and Apache servers
-				const raw = res.pipe(new PassThrough$1());
-				raw.once('data', function (chunk) {
-					// see http://stackoverflow.com/questions/37519828
-					if ((chunk[0] & 0x0F) === 0x08) {
-						body = body.pipe(zlib.createInflate());
-					} else {
-						body = body.pipe(zlib.createInflateRaw());
-					}
-					response = new Response(body, response_options);
-					resolve(response);
-				});
-				raw.on('end', function () {
-					// some old IIS servers return zero-length OK deflate responses, so 'data' is never emitted.
-					if (!response) {
-						response = new Response(body, response_options);
-						resolve(response);
-					}
-				});
-				return;
-			}
+            // for deflate
+            if (codings == 'deflate' || codings == 'x-deflate') {
+                // handle the infamous raw deflate response from old servers
+                // a hack for old IIS and Apache servers
+                const raw = res.pipe(new PassThrough$1());
+                raw.once('data', function (chunk) {
+                    // see http://stackoverflow.com/questions/37519828
+                    if ((chunk[0] & 0x0F) === 0x08) {
+                        body = body.pipe(zlib.createInflate());
+                    } else {
+                        body = body.pipe(zlib.createInflateRaw());
+                    }
+                    response = new Response(body, response_options);
+                    resolve(response);
+                });
+                raw.on('end', function () {
+                    // some old IIS servers return zero-length OK deflate responses, so 'data' is never emitted.
+                    if (!response) {
+                        response = new Response(body, response_options);
+                        resolve(response);
+                    }
+                });
+                return;
+            }
 
-			// for br
-			if (codings == 'br' && typeof zlib.createBrotliDecompress === 'function') {
-				body = body.pipe(zlib.createBrotliDecompress());
-				response = new Response(body, response_options);
-				resolve(response);
-				return;
-			}
+            // for br
+            if (codings == 'br' && typeof zlib.createBrotliDecompress === 'function') {
+                body = body.pipe(zlib.createBrotliDecompress());
+                response = new Response(body, response_options);
+                resolve(response);
+                return;
+            }
 
-			// otherwise, use response as-is
-			response = new Response(body, response_options);
-			resolve(response);
-		});
+            // otherwise, use response as-is
+            response = new Response(body, response_options);
+            resolve(response);
+        });
 
-		writeToStream(req, request);
-	});
+        writeToStream(req, request);
+    });
 }
 function fixResponseChunkedTransferBadEnding(request, errorCallback) {
-	let socket;
+    let socket;
 
-	request.on('socket', function (s) {
-		socket = s;
-	});
+    request.on('socket', function (s) {
+        socket = s;
+    });
 
-	request.on('response', function (response) {
-		const headers = response.headers;
+    request.on('response', function (response) {
+        const headers = response.headers;
 
-		if (headers['transfer-encoding'] === 'chunked' && !headers['content-length']) {
-			response.once('close', function (hadError) {
-				// if a data listener is still present we didn't end cleanly
-				const hasDataListener = socket.listenerCount('data') > 0;
+        if (headers['transfer-encoding'] === 'chunked' && !headers['content-length']) {
+            response.once('close', function (hadError) {
+                // if a data listener is still present we didn't end cleanly
+                const hasDataListener = socket.listenerCount('data') > 0;
 
-				if (hasDataListener && !hadError) {
-					const err = new Error('Premature close');
-					err.code = 'ERR_STREAM_PREMATURE_CLOSE';
-					errorCallback(err);
-				}
-			});
-		}
-	});
+                if (hasDataListener && !hadError) {
+                    const err = new Error('Premature close');
+                    err.code = 'ERR_STREAM_PREMATURE_CLOSE';
+                    errorCallback(err);
+                }
+            });
+        }
+    });
 }
 
 function destroyStream(stream, err) {
-	if (stream.destroy) {
-		stream.destroy(err);
-	} else {
-		// node < 8
-		stream.emit('error', err);
-		stream.end();
-	}
+    if (stream.destroy) {
+        stream.destroy(err);
+    } else {
+        // node < 8
+        stream.emit('error', err);
+        stream.end();
+    }
 }
 
 /**
@@ -21322,7 +21346,7 @@ function destroyStream(stream, err) {
  * @return  Boolean
  */
 fetch.isRedirect = function (code) {
-	return code === 301 || code === 302 || code === 303 || code === 307 || code === 308;
+    return code === 301 || code === 302 || code === 303 || code === 307 || code === 308;
 };
 
 // expose Promise
@@ -21395,18 +21419,18 @@ function onceStrict (fn) {
 
 
 function posix(path) {
-	return path.charAt(0) === '/';
+    return path.charAt(0) === '/';
 }
 
 function win32(path) {
-	// https://github.com/nodejs/node/blob/b3fcc245fb25539909ef1d5eaa01dbf92e168633/lib/path.js#L56
-	var splitDeviceRe = /^([a-zA-Z]:|[\\\/]{2}[^\\\/]+[\\\/]+[^\\\/]+)?([\\\/])?([\s\S]*?)$/;
-	var result = splitDeviceRe.exec(path);
-	var device = result[1] || '';
-	var isUnc = Boolean(device && device.charAt(1) !== ':');
+    // https://github.com/nodejs/node/blob/b3fcc245fb25539909ef1d5eaa01dbf92e168633/lib/path.js#L56
+    var splitDeviceRe = /^([a-zA-Z]:|[\\\/]{2}[^\\\/]+[\\\/]+[^\\\/]+)?([\\\/])?([\s\S]*?)$/;
+    var result = splitDeviceRe.exec(path);
+    var device = result[1] || '';
+    var isUnc = Boolean(device && device.charAt(1) !== ':');
 
-	// UNC paths are always absolute
-	return Boolean(result[2] || isUnc);
+    // UNC paths are always absolute
+    return Boolean(result[2] || isUnc);
 }
 
 module.exports = process.platform === 'win32' ? win32 : posix;
@@ -21998,131 +22022,131 @@ const {env} = process;
 
 let forceColor;
 if (hasFlag('no-color') ||
-	hasFlag('no-colors') ||
-	hasFlag('color=false') ||
-	hasFlag('color=never')) {
-	forceColor = 0;
+    hasFlag('no-colors') ||
+    hasFlag('color=false') ||
+    hasFlag('color=never')) {
+    forceColor = 0;
 } else if (hasFlag('color') ||
-	hasFlag('colors') ||
-	hasFlag('color=true') ||
-	hasFlag('color=always')) {
-	forceColor = 1;
+    hasFlag('colors') ||
+    hasFlag('color=true') ||
+    hasFlag('color=always')) {
+    forceColor = 1;
 }
 
 if ('FORCE_COLOR' in env) {
-	if (env.FORCE_COLOR === 'true') {
-		forceColor = 1;
-	} else if (env.FORCE_COLOR === 'false') {
-		forceColor = 0;
-	} else {
-		forceColor = env.FORCE_COLOR.length === 0 ? 1 : Math.min(parseInt(env.FORCE_COLOR, 10), 3);
-	}
+    if (env.FORCE_COLOR === 'true') {
+        forceColor = 1;
+    } else if (env.FORCE_COLOR === 'false') {
+        forceColor = 0;
+    } else {
+        forceColor = env.FORCE_COLOR.length === 0 ? 1 : Math.min(parseInt(env.FORCE_COLOR, 10), 3);
+    }
 }
 
 function translateLevel(level) {
-	if (level === 0) {
-		return false;
-	}
+    if (level === 0) {
+        return false;
+    }
 
-	return {
-		level,
-		hasBasic: true,
-		has256: level >= 2,
-		has16m: level >= 3
-	};
+    return {
+        level,
+        hasBasic: true,
+        has256: level >= 2,
+        has16m: level >= 3
+    };
 }
 
 function supportsColor(haveStream, streamIsTTY) {
-	if (forceColor === 0) {
-		return 0;
-	}
+    if (forceColor === 0) {
+        return 0;
+    }
 
-	if (hasFlag('color=16m') ||
-		hasFlag('color=full') ||
-		hasFlag('color=truecolor')) {
-		return 3;
-	}
+    if (hasFlag('color=16m') ||
+        hasFlag('color=full') ||
+        hasFlag('color=truecolor')) {
+        return 3;
+    }
 
-	if (hasFlag('color=256')) {
-		return 2;
-	}
+    if (hasFlag('color=256')) {
+        return 2;
+    }
 
-	if (haveStream && !streamIsTTY && forceColor === undefined) {
-		return 0;
-	}
+    if (haveStream && !streamIsTTY && forceColor === undefined) {
+        return 0;
+    }
 
-	const min = forceColor || 0;
+    const min = forceColor || 0;
 
-	if (env.TERM === 'dumb') {
-		return min;
-	}
+    if (env.TERM === 'dumb') {
+        return min;
+    }
 
-	if (process.platform === 'win32') {
-		// Windows 10 build 10586 is the first Windows release that supports 256 colors.
-		// Windows 10 build 14931 is the first release that supports 16m/TrueColor.
-		const osRelease = os.release().split('.');
-		if (
-			Number(osRelease[0]) >= 10 &&
-			Number(osRelease[2]) >= 10586
-		) {
-			return Number(osRelease[2]) >= 14931 ? 3 : 2;
-		}
+    if (process.platform === 'win32') {
+        // Windows 10 build 10586 is the first Windows release that supports 256 colors.
+        // Windows 10 build 14931 is the first release that supports 16m/TrueColor.
+        const osRelease = os.release().split('.');
+        if (
+            Number(osRelease[0]) >= 10 &&
+            Number(osRelease[2]) >= 10586
+        ) {
+            return Number(osRelease[2]) >= 14931 ? 3 : 2;
+        }
 
-		return 1;
-	}
+        return 1;
+    }
 
-	if ('CI' in env) {
-		if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'GITHUB_ACTIONS', 'BUILDKITE'].some(sign => sign in env) || env.CI_NAME === 'codeship') {
-			return 1;
-		}
+    if ('CI' in env) {
+        if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'GITHUB_ACTIONS', 'BUILDKITE'].some(sign => sign in env) || env.CI_NAME === 'codeship') {
+            return 1;
+        }
 
-		return min;
-	}
+        return min;
+    }
 
-	if ('TEAMCITY_VERSION' in env) {
-		return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env.TEAMCITY_VERSION) ? 1 : 0;
-	}
+    if ('TEAMCITY_VERSION' in env) {
+        return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env.TEAMCITY_VERSION) ? 1 : 0;
+    }
 
-	if (env.COLORTERM === 'truecolor') {
-		return 3;
-	}
+    if (env.COLORTERM === 'truecolor') {
+        return 3;
+    }
 
-	if ('TERM_PROGRAM' in env) {
-		const version = parseInt((env.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
+    if ('TERM_PROGRAM' in env) {
+        const version = parseInt((env.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
 
-		switch (env.TERM_PROGRAM) {
-			case 'iTerm.app':
-				return version >= 3 ? 3 : 2;
-			case 'Apple_Terminal':
-				return 2;
-			// No default
-		}
-	}
+        switch (env.TERM_PROGRAM) {
+            case 'iTerm.app':
+                return version >= 3 ? 3 : 2;
+            case 'Apple_Terminal':
+                return 2;
+            // No default
+        }
+    }
 
-	if (/-256(color)?$/i.test(env.TERM)) {
-		return 2;
-	}
+    if (/-256(color)?$/i.test(env.TERM)) {
+        return 2;
+    }
 
-	if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env.TERM)) {
-		return 1;
-	}
+    if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env.TERM)) {
+        return 1;
+    }
 
-	if ('COLORTERM' in env) {
-		return 1;
-	}
+    if ('COLORTERM' in env) {
+        return 1;
+    }
 
-	return min;
+    return min;
 }
 
 function getSupportLevel(stream) {
-	const level = supportsColor(stream, stream && stream.isTTY);
-	return translateLevel(level);
+    const level = supportsColor(stream, stream && stream.isTTY);
+    return translateLevel(level);
 }
 
 module.exports = {
-	supportsColor: getSupportLevel,
-	stdout: translateLevel(supportsColor(true, tty.isatty(1))),
-	stderr: translateLevel(supportsColor(true, tty.isatty(2)))
+    supportsColor: getSupportLevel,
+    stdout: translateLevel(supportsColor(true, tty.isatty(1))),
+    stderr: translateLevel(supportsColor(true, tty.isatty(2)))
 };
 
 
@@ -26303,51 +26327,51 @@ module.exports = JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45,46],"valid"]
 
 /***/ })
 
-/******/ 	});
+/******/    });
 /************************************************************************/
-/******/ 	// The module cache
-/******/ 	var __webpack_module_cache__ = {};
-/******/ 	
-/******/ 	// The require function
-/******/ 	function __nccwpck_require__(moduleId) {
-/******/ 		// Check if module is in cache
-/******/ 		var cachedModule = __webpack_module_cache__[moduleId];
-/******/ 		if (cachedModule !== undefined) {
-/******/ 			return cachedModule.exports;
-/******/ 		}
-/******/ 		// Create a new module (and put it into the cache)
-/******/ 		var module = __webpack_module_cache__[moduleId] = {
-/******/ 			// no module.id needed
-/******/ 			// no module.loaded needed
-/******/ 			exports: {}
-/******/ 		};
-/******/ 	
-/******/ 		// Execute the module function
-/******/ 		var threw = true;
-/******/ 		try {
-/******/ 			__webpack_modules__[moduleId].call(module.exports, module, module.exports, __nccwpck_require__);
-/******/ 			threw = false;
-/******/ 		} finally {
-/******/ 			if(threw) delete __webpack_module_cache__[moduleId];
-/******/ 		}
-/******/ 	
-/******/ 		// Return the exports of the module
-/******/ 		return module.exports;
-/******/ 	}
-/******/ 	
+/******/    // The module cache
+/******/    var __webpack_module_cache__ = {};
+/******/    
+/******/    // The require function
+/******/    function __nccwpck_require__(moduleId) {
+/******/        // Check if module is in cache
+/******/        var cachedModule = __webpack_module_cache__[moduleId];
+/******/        if (cachedModule !== undefined) {
+/******/            return cachedModule.exports;
+/******/        }
+/******/        // Create a new module (and put it into the cache)
+/******/        var module = __webpack_module_cache__[moduleId] = {
+/******/            // no module.id needed
+/******/            // no module.loaded needed
+/******/            exports: {}
+/******/        };
+/******/    
+/******/        // Execute the module function
+/******/        var threw = true;
+/******/        try {
+/******/            __webpack_modules__[moduleId].call(module.exports, module, module.exports, __nccwpck_require__);
+/******/            threw = false;
+/******/        } finally {
+/******/            if(threw) delete __webpack_module_cache__[moduleId];
+/******/        }
+/******/    
+/******/        // Return the exports of the module
+/******/        return module.exports;
+/******/    }
+/******/    
 /************************************************************************/
-/******/ 	/* webpack/runtime/compat */
-/******/ 	
-/******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
-/******/ 	
+/******/    /* webpack/runtime/compat */
+/******/    
+/******/    if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
+/******/    
 /************************************************************************/
-/******/ 	
-/******/ 	// startup
-/******/ 	// Load entry module and return exports
-/******/ 	// This entry module is referenced by other modules so it can't be inlined
-/******/ 	var __webpack_exports__ = __nccwpck_require__(3109);
-/******/ 	module.exports = __webpack_exports__;
-/******/ 	
+/******/    
+/******/    // startup
+/******/    // Load entry module and return exports
+/******/    // This entry module is referenced by other modules so it can't be inlined
+/******/    var __webpack_exports__ = __nccwpck_require__(3109);
+/******/    module.exports = __webpack_exports__;
+/******/    
 /******/ })()
 ;
 //# sourceMappingURL=index.js.map
